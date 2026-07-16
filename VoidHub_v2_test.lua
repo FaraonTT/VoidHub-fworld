@@ -777,6 +777,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["ScriptFunction"] = function(self, Value)
                 task.wait(0.5)
                 ApplySpeed()
+                HookWalkSpeed()
             end
         },
         ["SpeedMultiplier"] = {
@@ -1075,16 +1076,15 @@ SideVoidButton.LayoutOrder = SettingsButton.LayoutOrder - 1
 
 -- ===== НОВЫЙ ДИЗАЙН КНОПКИ (V с фиолетовой обводкой) ===== --
 if NewUIVersion then
-    -- Меняем иконку на "V"
-    VoidButton:FindFirstChild("Icon").ImageColor3 = Color3.fromRGB(128, 0, 255) -- Фиолетовый
-    VoidButton:FindFirstChild("Icon").Image = "rbxassetid://6031092056" -- Буква V (или используй текстовую метку)
+    VoidButton:FindFirstChild("Icon").ImageColor3 = Color3.fromRGB(128, 0, 255)
+    VoidButton:FindFirstChild("Icon").Image = "rbxassetid://6031092056"
     VoidButton:FindFirstChild("Text"):FindFirstChild("Name").Text = "Void"
     VoidButton:FindFirstChild("Line").ImageColor3 = Color3.fromRGB(128, 0, 255)
     VoidButton:FindFirstChild("Highlight").ImageColor3 = Color3.fromRGB(128, 0, 255)
     VoidButton:FindFirstChild("Text"):FindFirstChild("Name").TextColor3 = Color3.fromRGB(128, 0, 255)
     for i,v in VoidButton:FindFirstChild("Text"):GetChildren() do 
         if v:IsA("ImageLabel") then 
-            v.ImageColor3 = Color3.fromRGB(128, 0, 255) -- Фиолетовый фон текста
+            v.ImageColor3 = Color3.fromRGB(128, 0, 255)
         end 
     end
     VoidButton:FindFirstChild("BG").ImageColor3 = Color3.fromRGB(128, 0, 255)
@@ -1095,7 +1095,7 @@ if NewUIVersion then
 else
     SideVoidButton.Button.ImageColor3 = Color3.fromRGB(128, 0, 255)
     SideVoidButton.Icon.ImageColor3 = Color3.fromRGB(128, 0, 255)
-    SideVoidButton.Icon.Image = "rbxassetid://6031092056" -- Буква V
+    SideVoidButton.Icon.Image = "rbxassetid://6031092056"
     SideVoidButton.Inverted.ImageColor3 = Color3.fromRGB(200, 128, 255)
     SideVoidButton.Inverted.ImageTransparency = 1
     SideVoidButton.InvertedIcon.ImageColor3 = Color3.fromRGB(200, 128, 255)
@@ -1363,7 +1363,38 @@ function GetValue(FeatureName,InstanceOnly)
     end
 end
 
--- ===== SPEEDHACK FUNCTION (ИСПРАВЛЕНА) ===== --
+-- ===== SPEEDHACK С ПЕРЕХВАТОМ SetWalkSpeed ===== --
+local oldSetWalkSpeed = nil
+local function HookWalkSpeed()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    if oldSetWalkSpeed then
+        return
+    end
+    
+    local success, original = pcall(function()
+        return hum.SetWalkSpeed
+    end)
+    if not success or not original then
+        return
+    end
+    
+    oldSetWalkSpeed = original
+    
+    hum.SetWalkSpeed = function(self, newSpeed)
+        local enabled = GetValue("SpeedHack")
+        if enabled == true then
+            local multiplier = GetValue("SpeedMultiplier") or 16
+            return oldSetWalkSpeed(self, multiplier)
+        else
+            return oldSetWalkSpeed(self, newSpeed)
+        end
+    end
+end
+
 local function ApplySpeed()
     local char = LocalPlayer.Character
     if not char then return end
@@ -1379,6 +1410,19 @@ local function ApplySpeed()
         hum.WalkSpeed = 16
     end
 end
+
+local function SetupSpeedHook()
+    local char = LocalPlayer.Character
+    if char then
+        HookWalkSpeed()
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    SetupSpeedHook()
+end)
+SetupSpeedHook()
 
 local function GetFunction(Function1, Function2)
     return typeof(Function1) == "function" and Function1 or (typeof(Function2) == "function" and Function2) or nil
@@ -2179,7 +2223,7 @@ task.spawn(function()
                         local ClonedUI = ReplicatedStorage:FindFirstChild("NoChat",true) and ReplicatedStorage:FindFirstChild("NoChat",true):Clone()
                         if ClonedUI then
                             ClonedUI.Name = "VoidUser"
-                            ClonedUI.Image = "rbxassetid://6031092056" -- V иконка
+                            ClonedUI.Image = "rbxassetid://6031092056"
                             ClonedUI.Parent = PlayersUI
                             ClonedUI.Visible = true
                             ClonedUI.AnchorPoint = Vector2.new(0.5,0.425)
@@ -2256,7 +2300,11 @@ local function ActionOnCharacter(Character)
         -- Применяем SpeedHack на персонаже
         task.wait(0.5)
         ApplySpeed()
-        task.delay(1, ApplySpeed) -- повтор через секунду
+        HookWalkSpeed()
+        task.delay(1, function()
+            ApplySpeed()
+            HookWalkSpeed()
+        end)
         LocalRoot:GetPropertyChangedSignal("Anchored"):Connect(function()
             if not LocalRoot.Anchored then
                 task.delay(0.75,GoUnder)
@@ -2658,6 +2706,7 @@ ThreadManager:Start("FeatureHandler", function()
     
     -- SpeedHack (применяем каждый тик)
     pcall(ApplySpeed)
+    pcall(HookWalkSpeed)
     
     task.spawn(function()
         if LocalRoot and not IsFixingGenerator and (GetValue("AutoGeneratorPuzzle")) and GameMap then
@@ -3738,7 +3787,8 @@ if SideVoidButton:IsA("Frame") then
                                             Menu:ToggleMenu()
                                         end
                                     end)
-                                end                                MenuData.SidebarMenus[ButtonName] = {
+                                end
+                                MenuData.SidebarMenus[ButtonName] = {
                                     ["Toggled"] = Event and Event.Event or nil,
                                     ["SidebarButton"] = Buttons:FindFirstChild(ButtonName) or nil,
                                     ["Menu"] = MainUI:FindFirstChild(v.Name),
