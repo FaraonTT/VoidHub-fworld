@@ -1,4 +1,5 @@
--- VoidHub Made by void_fworld
+-- VoidHub v2.2 | Archmagos Edition
+-- Made by void_fworld
 
 if workspace.DistributedGameTime < 4 then
     task.wait(4 - workspace.DistributedGameTime)
@@ -18,7 +19,7 @@ end)
 
 -- General Variables --
 
-local Version = "2.1"
+local Version = "2.2"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -70,6 +71,15 @@ local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGr
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(158, 0, 179),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
 local GameVersionForScript = "2026-07-14"
+
+-- ===== НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ ФУНКЦИЙ ===== --
+local FlyEnabled = false
+local FlyBodyVelocity = nil
+local WalkOnWaterEnabled = false
+local AutoClickerEnabled = false
+local AutoClickerConnection = nil
+local TeleportTarget = nil
+
 local FeatureLoadout; FeatureLoadout = {
     ["EnviromentFunctions"] = {
           ["TabAttributes"] = {
@@ -237,6 +247,18 @@ local FeatureLoadout; FeatureLoadout = {
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value) end
+        },
+        ["AutoClicker"] = {
+            ["DisplayDescription"] = "Auto-clicks (generators/interactions) every 0.5s",
+            ["DisplayTitle"] = "Auto Clicker",
+            ["LayoutOrder"] = 5,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                ToggleAutoClicker(Value)
+            end
         },
     },
 
@@ -523,7 +545,44 @@ local FeatureLoadout; FeatureLoadout = {
                     AutoImage.Visible = false
                 end
             end
-        }
+        },
+        -- ===== НОВЫЕ ФУНКЦИИ ===== --
+        ["Fly"] = {
+            ["DisplayDescription"] = "Free flight (WASD + Space/Shift)",
+            ["DisplayTitle"] = "Fly",
+            ["LayoutOrder"] = 14,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                ToggleFly(Value)
+            end
+        },
+        ["WalkOnWater"] = {
+            ["DisplayDescription"] = "Walk on water surfaces",
+            ["DisplayTitle"] = "Walk on Water",
+            ["LayoutOrder"] = 15,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                ToggleWalkOnWater(Value)
+            end
+        },
+        ["AntiStun"] = {
+            ["DisplayDescription"] = "Prevents stun effects from killer",
+            ["DisplayTitle"] = "Anti-Stun",
+            ["LayoutOrder"] = 16,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                ToggleAntiStun(Value)
+            end
+        },
     },
 
     ["Visuals"] = {
@@ -758,7 +817,36 @@ local FeatureLoadout; FeatureLoadout = {
                 end
                 GetValue("AutoPickup",true):SetAttribute("DisplayDescription",string.format("Auto-Picks up <b>%s</b> near you",RichTextGradientColor("Items",{Color,DarkerColor})))
             end
-        }
+        },
+        -- ===== НОВЫЕ ВИЗУАЛЬНЫЕ ФУНКЦИИ ===== --
+        ["NoFog"] = {
+            ["DisplayDescription"] = "Removes all fog from the map",
+            ["DisplayTitle"] = "No Fog",
+            ["LayoutOrder"] = 14,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                ToggleNoFog(Value)
+            end
+        },
+        ["BrightnessBoost"] = {
+            ["DisplayDescription"] = "Increases map brightness",
+            ["DisplayTitle"] = "Brightness Boost",
+            ["LayoutOrder"] = 15,
+            ["Savable"] = true,
+            ["InstanceType"] = "NumberValue",
+            ["DefaultInstanceValue"] = 1,
+            ["ExtraData"] = {
+                ["MaxValue"] = 5,
+                ["MinValue"] = 0.5,
+                ["Step"] = 0.25,
+            },
+            ["ScriptFunction"] = function(self, Value)
+                ApplyBrightness(Value)
+            end
+        },
     },
 
     ["Movement"] = {
@@ -1057,6 +1145,24 @@ local FeatureLoadout; FeatureLoadout = {
                     end
                 elseif workspace:GetAttribute("LoadingTeleport") then
                     self.Instance.Value = true
+                end
+            end
+        },
+        -- ===== НОВАЯ ФУНКЦИЯ ===== --
+        ["TeleportToPlayer"] = {
+            ["DisplayDescription"] = "Select a player to teleport to",
+            ["DisplayTitle"] = "Teleport to Player",
+            ["LayoutOrder"] = 16,
+            ["Savable"] = false,
+            ["InstanceType"] = "StringValue",
+            ["DefaultInstanceValue"] = "None",
+            ["ExtraData"] = {
+                ["Options"] = "None",
+            },
+            ["ScriptFunction"] = function(self, Value)
+                TeleportTarget = Value
+                if Value ~= "None" then
+                    TeleportToPlayer(Value)
                 end
             end
         },
@@ -1424,6 +1530,161 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 SetupSpeedHook()
 
+-- ===== НОВЫЕ ФУНКЦИИ ===== --
+
+-- 1. Fly
+function ToggleFly(Value)
+    FlyEnabled = Value
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    if Value then
+        FlyBodyVelocity = Instance.new("BodyVelocity")
+        FlyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        FlyBodyVelocity.Parent = root
+        humanoid.PlatformStand = true
+        -- Привязываем управление
+        RunService.Heartbeat:Connect(function()
+            if not FlyEnabled then return end
+            local moveDir = Vector3.new(0, 0, 0)
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Vector3.new(0, 0, -1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir + Vector3.new(0, 0, 1) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir + Vector3.new(-1, 0, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Vector3.new(1, 0, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir + Vector3.new(0, -1, 0) end
+            
+            if moveDir.Magnitude > 0 then
+                local camera = workspace.CurrentCamera
+                local forward = camera.CFrame.LookVector
+                local right = camera.CFrame.RightVector
+                local up = camera.CFrame.UpVector
+                local velocity = (forward * -moveDir.Z + right * moveDir.X + up * moveDir.Y) * 50
+                if FlyBodyVelocity then
+                    FlyBodyVelocity.Velocity = velocity
+                end
+            else
+                if FlyBodyVelocity then
+                    FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end)
+    else
+        if FlyBodyVelocity then
+            FlyBodyVelocity:Destroy()
+            FlyBodyVelocity = nil
+        end
+        humanoid.PlatformStand = false
+    end
+end
+
+-- 2. Walk on Water
+function ToggleWalkOnWater(Value)
+    WalkOnWaterEnabled = Value
+    if Value then
+        -- Просто игнорируем воду через изменение физики персонажа
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+                end
+            end
+        end
+    else
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5, 0.5, 0.5)
+                end
+            end
+        end
+    end
+end
+
+-- 3. No Fog
+function ToggleNoFog(Value)
+    if Value then
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+    else
+        Lighting.FogEnd = 1000
+        Lighting.FogStart = 0
+    end
+end
+
+-- 4. Brightness Boost
+function ApplyBrightness(Value)
+    Lighting.Brightness = Value
+    Lighting.Ambient = Color3.new(Value * 0.5, Value * 0.5, Value * 0.5)
+end
+
+-- 5. Auto Clicker
+function ToggleAutoClicker(Value)
+    AutoClickerEnabled = Value
+    if Value then
+        if AutoClickerConnection then
+            AutoClickerConnection:Disconnect()
+            AutoClickerConnection = nil
+        end
+        AutoClickerConnection = RunService.Heartbeat:Connect(function()
+            if not AutoClickerEnabled then return end
+            -- Имитация клика в центр экрана
+            local mouse = LocalPlayer:GetMouse()
+            if mouse then
+                mouse.Button1Down:Fire()
+                task.wait(0.1)
+                mouse.Button1Up:Fire()
+            end
+        end)
+    else
+        if AutoClickerConnection then
+            AutoClickerConnection:Disconnect()
+            AutoClickerConnection = nil
+        end
+    end
+end
+
+-- 6. Anti-Stun
+function ToggleAntiStun(Value)
+    if Value then
+        RunService.Heartbeat:Connect(function()
+            if not GetValue("AntiStun") then return end
+            local char = LocalPlayer.Character
+            if char then
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    -- Убираем эффекты оглушения
+                    for _, effect in pairs(char:GetChildren()) do
+                        if effect:IsA("NumberValue") and (effect.Name:lower():find("stun") or effect.Name:lower():find("slow")) then
+                            effect:Destroy()
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end
+
+-- 7. Teleport to Player
+function TeleportToPlayer(PlayerName)
+    local target = Players:FindFirstChild(PlayerName)
+    if not target then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local targetRoot = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return end
+    root.CFrame = targetRoot.CFrame + Vector3.new(0, 2, 0)
+end
+
 local function GetFunction(Function1, Function2)
     return typeof(Function1) == "function" and Function1 or (typeof(Function2) == "function" and Function2) or nil
 end
@@ -1618,6 +1879,14 @@ local function UpdatePlayerCrashDrop()
         OriginString ..= "|Everyone"
     end
     FeatureLoadout["Miscellaneous"]["PlayerSelectCrash"]["Instance"]:SetAttribute("Options", OriginString)
+    -- Также обновляем TeleportToPlayer список
+    local TeleportOptions = "None"
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            TeleportOptions = TeleportOptions .. "|" .. p.Name
+        end
+    end
+    FeatureLoadout["Miscellaneous"]["TeleportToPlayer"]["Instance"]:SetAttribute("Options", TeleportOptions)
 end
 
 function HandlePrivacySettings(Player)
@@ -3958,4 +4227,4 @@ SideBar:SetAttribute("WasVisible",(MainUI:FindFirstChild("AbilityContainer") == 
 UICheck()
 SideBar.Visible = true
 
-ColoredPrint("VoidHub has loaded successfully","success",Color3.fromRGB(0, 200, 125))
+ColoredPrint("VoidHub v2.2 | Archmagos Edition loaded successfully","success",Color3.fromRGB(0, 200, 125))
