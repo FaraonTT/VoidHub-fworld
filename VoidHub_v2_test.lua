@@ -775,6 +775,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
+                task.wait(0.5)
                 ApplySpeed()
             end
         },
@@ -1071,37 +1072,44 @@ VoidFolderSettings.Parent = PlayerData
 SideVoidButton.Name = "Void"
 SideVoidButton.Parent = Buttons
 SideVoidButton.LayoutOrder = SettingsButton.LayoutOrder - 1
+
+-- ===== НОВЫЙ ДИЗАЙН КНОПКИ (V с фиолетовой обводкой) ===== --
 if NewUIVersion then
-    VoidButton:FindFirstChild("Icon").ImageColor3 = Color3.fromRGB(0, 170, 127)
-    VoidButton:FindFirstChild("Icon").Image = "rbxassetid://118860705115878"
+    -- Меняем иконку на "V"
+    VoidButton:FindFirstChild("Icon").ImageColor3 = Color3.fromRGB(128, 0, 255) -- Фиолетовый
+    VoidButton:FindFirstChild("Icon").Image = "rbxassetid://6031092056" -- Буква V (или используй текстовую метку)
     VoidButton:FindFirstChild("Text"):FindFirstChild("Name").Text = "Void"
-    VoidButton:FindFirstChild("Line").ImageColor3 = Color3.fromRGB(0, 170, 127)
-    VoidButton:FindFirstChild("Highlight").ImageColor3 = Color3.fromRGB(0, 170, 127)
-    VoidButton:FindFirstChild("Text"):FindFirstChild("Name").TextColor3 = Color3.fromRGB(0, 170, 127)
-    for i,v in VoidButton:FindFirstChild("Text"):GetChildren() do if v:IsA("ImageLabel") then v.ImageColor3 = Color3.fromRGB(0, 17, 13) end end
-    VoidButton:FindFirstChild("BG").ImageColor3 = Color3.fromRGB(0, 17, 13)
-    VoidButton:FindFirstChild("Grunge").ImageColor3 = Color3.fromRGB(0, 37, 24)
+    VoidButton:FindFirstChild("Line").ImageColor3 = Color3.fromRGB(128, 0, 255)
+    VoidButton:FindFirstChild("Highlight").ImageColor3 = Color3.fromRGB(128, 0, 255)
+    VoidButton:FindFirstChild("Text"):FindFirstChild("Name").TextColor3 = Color3.fromRGB(128, 0, 255)
+    for i,v in VoidButton:FindFirstChild("Text"):GetChildren() do 
+        if v:IsA("ImageLabel") then 
+            v.ImageColor3 = Color3.fromRGB(128, 0, 255) -- Фиолетовый фон текста
+        end 
+    end
+    VoidButton:FindFirstChild("BG").ImageColor3 = Color3.fromRGB(128, 0, 255)
+    VoidButton:FindFirstChild("Grunge").ImageColor3 = Color3.fromRGB(128, 0, 255)
     VoidButton:FindFirstChild("Grunge").ImageTransparency = 0.2
     VoidButton:FindFirstChild("GrungeMain").ImageTransparency = 1
     UIScale.Parent = VoidButton
 else
-    SideVoidButton.Button.ImageColor3 = Color3.fromRGB(0, 170, 127)
-    SideVoidButton.Icon.ImageColor3 = Color3.fromRGB(0, 170, 127)
-    SideVoidButton.Icon.Image = "rbxassetid://118860705115878"
-    SideVoidButton.Inverted.ImageColor3 = Color3.fromRGB(105, 255, 212)
+    SideVoidButton.Button.ImageColor3 = Color3.fromRGB(128, 0, 255)
+    SideVoidButton.Icon.ImageColor3 = Color3.fromRGB(128, 0, 255)
+    SideVoidButton.Icon.Image = "rbxassetid://6031092056" -- Буква V
+    SideVoidButton.Inverted.ImageColor3 = Color3.fromRGB(200, 128, 255)
     SideVoidButton.Inverted.ImageTransparency = 1
-    SideVoidButton.InvertedIcon.ImageColor3 = Color3.fromRGB(105, 255, 212)
-    SideVoidButton.InvertedIcon.Image = "rbxassetid://85001556314176"
+    SideVoidButton.InvertedIcon.ImageColor3 = Color3.fromRGB(200, 128, 255)
+    SideVoidButton.InvertedIcon.Image = "rbxassetid://6031092056"
     SideVoidButton.InvertedIcon.ImageTransparency = 1
-    PulloutFrameVoid.Title.TextColor3 = Color3.fromRGB(0, 170, 127)
+    PulloutFrameVoid.Title.TextColor3 = Color3.fromRGB(128, 0, 255)
     PulloutFrameVoid.Position = UDim2.fromScale(0,0.5)
-    PulloutFrameVoid.ArtAsset.ImageColor3 = Color3.fromRGB(0, 170, 127)
-    PulloutFrameVoid.Inverted.ImageColor3 = Color3.fromRGB(105, 255, 212)
+    PulloutFrameVoid.ArtAsset.ImageColor3 = Color3.fromRGB(128, 0, 255)
+    PulloutFrameVoid.Inverted.ImageColor3 = Color3.fromRGB(200, 128, 255)
     PulloutFrameVoid.Inverted.ImageTransparency = 1
 end
 
 local Arrow = game:GetService("ReplicatedStorage"):FindFirstChild("DropdownArrow",true):Clone()
-Arrow.ImageColor3 = Color3.fromRGB(0, 170, 127)
+Arrow.ImageColor3 = Color3.fromRGB(128, 0, 255)
 Arrow.Parent = SideVoidButton
 Arrow.Position = UDim2.fromScale(1.6,0.5)
 Arrow.AnchorPoint = Vector2.new(0.5,0.5)
@@ -1114,9 +1122,9 @@ VoidMenu.Name = "VoidScreen"
 VoidMenu.Parent = MainUI
 VoidMenu.Visible = false
 VoidMenu.Size = UDim2.new(1,-20,0,0)
-VoidMenu.SettingsContainer.ImageColor3 = Color3.fromRGB(0, 170, 127)
+VoidMenu.SettingsContainer.ImageColor3 = Color3.fromRGB(128, 0, 255)
 VoidMenu.SettingsContainer.BackgroundTransparency = 1
-VoidMenu.SettingsContainer.Contents.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 127)
+VoidMenu.SettingsContainer.Contents.ScrollBarImageColor3 = Color3.fromRGB(128, 0, 255)
 VoidMenu.SettingsContainer.Contents.Size = UDim2.fromScale(0.95,0.935)
 VoidMenu.SettingsContainer.Contents.Position = UDim2.fromScale(0.5,0.035)
 VoidMenu.ZIndex += 25
@@ -1266,16 +1274,16 @@ local function SetButtonState(Active)
         local u4 = {}
         local v5 = {
             ["Active"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             },
             ["Inactive"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 17, 13)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             }
         }
         u4.BG = v5
         local v6 = {
             ["Active"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             },
             ["Inactive"] = {
                 ["ImageColor3"] = Color3.fromRGB(80, 80, 80)
@@ -1285,38 +1293,38 @@ local function SetButtonState(Active)
         local v7 = {
             ["Active"] = {
                 ["ImageTransparency"] = 0,
-                ["ImageColor3"] = Color3.fromRGB(0, 229, 171)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             },
             ["Inactive"] = {
                 ["ImageTransparency"] = 0.2,
-                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             }
         }
         u4.Grunge = v7
         local v8 = {
             ["Active"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             },
             ["Inactive"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             }
         }
         u4.Highlight = v8
         local v9 = {
             ["Active"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             },
             ["Inactive"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             }
         }
         u4.Icon = v9
         local v10 = {
             ["Active"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             },
             ["Inactive"] = {
-                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+                ["ImageColor3"] = Color3.fromRGB(128, 0, 255)
             }
         }
         u4.Line = v10
@@ -1324,11 +1332,11 @@ local function SetButtonState(Active)
         for _, v27 in v26 and v26:GetChildren() or {} do
             if v27:IsA("TextLabel") then
                 TweenService:Create(v27, TweenInfo.new(0.25), {
-                    ["TextColor3"] = Active and Color3.fromRGB(0, 37, 24) or Color3.fromRGB(0, 170, 127)
+                    ["TextColor3"] = Active and Color3.fromRGB(128, 0, 255) or Color3.fromRGB(128, 0, 255)
                 }):Play()
             elseif v27:IsA("ImageLabel") then
                 TweenService:Create(v27, TweenInfo.new(0.25), {
-                    ["ImageColor3"] = Active and Color3.fromRGB(0, 170, 127) or Color3.fromRGB(0, 17, 13)
+                    ["ImageColor3"] = Active and Color3.fromRGB(128, 0, 255) or Color3.fromRGB(128, 0, 255)
                 }):Play()
             end
         end
@@ -1352,6 +1360,23 @@ function GetValue(FeatureName,InstanceOnly)
         return FeatureInstance
     else
         return FeatureInstance and FeatureInstance.Value or nil
+    end
+end
+
+-- ===== SPEEDHACK FUNCTION (ИСПРАВЛЕНА) ===== --
+local function ApplySpeed()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    local enabled = GetValue("SpeedHack")
+    local multiplier = GetValue("SpeedMultiplier") or 16
+    
+    if enabled == true then
+        hum.WalkSpeed = multiplier
+    else
+        hum.WalkSpeed = 16
     end
 end
 
@@ -1983,23 +2008,6 @@ local function ReturnData(Path, WithFolder)
     end
 end
 
--- ===== SPEEDHACK FUNCTION ===== --
-local function ApplySpeed()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    
-    local enabled = GetValue("SpeedHack")
-    local multiplier = GetValue("SpeedMultiplier") or 16
-    
-    if enabled then
-        hum.WalkSpeed = multiplier
-    else
-        hum.WalkSpeed = 16
-    end
-end
-
 -- General Scripting --
 
 GameVersionForScript = GameVersionForScript:sub(1,10)
@@ -2171,7 +2179,7 @@ task.spawn(function()
                         local ClonedUI = ReplicatedStorage:FindFirstChild("NoChat",true) and ReplicatedStorage:FindFirstChild("NoChat",true):Clone()
                         if ClonedUI then
                             ClonedUI.Name = "VoidUser"
-                            ClonedUI.Image = "rbxassetid://118860705115878"
+                            ClonedUI.Image = "rbxassetid://6031092056" -- V иконка
                             ClonedUI.Parent = PlayersUI
                             ClonedUI.Visible = true
                             ClonedUI.AnchorPoint = Vector2.new(0.5,0.425)
@@ -2245,9 +2253,10 @@ local function ActionOnCharacter(Character)
         task.delay(0.25,function()
             HandleAllowJumping(GetValue("EnableJumping"))
         end)
-        -- Apply SpeedHack on character spawn
+        -- Применяем SpeedHack на персонаже
         task.wait(0.5)
         ApplySpeed()
+        task.delay(1, ApplySpeed) -- повтор через секунду
         LocalRoot:GetPropertyChangedSignal("Anchored"):Connect(function()
             if not LocalRoot.Anchored then
                 task.delay(0.75,GoUnder)
@@ -2647,8 +2656,8 @@ ThreadManager:Start("FeatureHandler", function()
         ComputerInstance.Value = UserInputService.KeyboardEnabled
     end
     
-    -- SpeedHack (apply each tick to override server resets)
-    ApplySpeed()
+    -- SpeedHack (применяем каждый тик)
+    pcall(ApplySpeed)
     
     task.spawn(function()
         if LocalRoot and not IsFixingGenerator and (GetValue("AutoGeneratorPuzzle")) and GameMap then
@@ -2740,6 +2749,22 @@ ThreadManager:Start("FeatureHandler", function()
         end
     end
 end,0.1)
+
+-- ===== ПРИНУДИТЕЛЬНЫЙ ФИКСАТОР СКОРОСТИ ===== --
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    local enabled = GetValue("SpeedHack")
+    if enabled == true then
+        local multiplier = GetValue("SpeedMultiplier") or 16
+        if hum.WalkSpeed ~= multiplier then
+            hum.WalkSpeed = multiplier
+        end
+    end
+end)
 
 local LoadUI = Instance.new("TextButton")
 local Folder = Instance.new("Folder")
@@ -3107,7 +3132,7 @@ else
                             TweenService:Create(Menu.SidebarButton.InvertedIcon, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
                             TweenService:Create(Menu.SidebarButton.PulloutHolder.PulloutFrame.Inverted, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
                             TweenService:Create(Menu.SidebarButton.PulloutHolder.PulloutFrame.Title, BaseTweenInfo, {
-                                ["TextColor3"] = Menu.Menu.Name == "VoidScreen" and Color3.fromRGB(0, 170, 127) or Color3.new(1,1,1) 
+                                ["TextColor3"] = Menu.Menu.Name == "VoidScreen" and Color3.fromRGB(128, 0, 255) or Color3.new(1,1,1) 
                             }):Play()
                         end
                         task.delay(0.25, function()
@@ -3713,8 +3738,7 @@ if SideVoidButton:IsA("Frame") then
                                             Menu:ToggleMenu()
                                         end
                                     end)
-                                end
-                                MenuData.SidebarMenus[ButtonName] = {
+                                end                                MenuData.SidebarMenus[ButtonName] = {
                                     ["Toggled"] = Event and Event.Event or nil,
                                     ["SidebarButton"] = Buttons:FindFirstChild(ButtonName) or nil,
                                     ["Menu"] = MainUI:FindFirstChild(v.Name),
