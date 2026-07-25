@@ -1,8 +1,7 @@
 --[[
-    VoidHub v5.0 | Machina Resurrecta
+    VoidHub v5.1 | Machina Resurrecta (Исправленная кнопка)
     Made by void_fworld
-    Полная версия с require, getgc, hookmetamethod
-    100+ функций для Forsaken
+    Полная версия с require/getgc/hookmetamethod
 ]]
 
 if workspace.DistributedGameTime < 4 then
@@ -44,9 +43,6 @@ local Debris = game:GetService("Debris")
 local VirtualUser = game:GetService("VirtualUser")
 local TextChatService = game:GetService("TextChatService")
 local LogService = game:GetService("LogService")
-local PhysicsService = game:GetService("PhysicsService")
-local MarketplaceService = game:GetService("MarketplaceService")
-local GroupService = game:GetService("GroupService")
 
 local Network = ReplicatedStorage:FindFirstChild("Modules") and ReplicatedStorage.Modules:FindFirstChild("Network", true) and ReplicatedStorage.Modules.Network:FindFirstChild("Network")
 local InGame = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Ingame")
@@ -57,7 +53,7 @@ local PlayersFolder = workspace:FindFirstChild("Players")
 local KillersFolder = PlayersFolder and PlayersFolder:FindFirstChild("Killers")
 local SurvivorsFolder = PlayersFolder and PlayersFolder:FindFirstChild("Survivors")
 
-local Version = "5.0"
+local Version = "5.1"
 local VoidFolderSettings = Instance.new("Folder")
 local RoundEvent = Instance.new("BindableEvent")
 local BindableShouldStop = Instance.new("BindableEvent")
@@ -68,7 +64,6 @@ local AllAnimations = {}
 local OverriddenAnimations = {}
 local NoliConfig = nil
 local MainModule = nil
-local UtilModule = nil
 local LastTrack = nil
 
 -- Переменные для функций
@@ -99,8 +94,7 @@ local SpeedLinesEnabled = false
 local NoAnimationEnabled = false
 
 local IsUnderground = false
-local IsFixingGenerator = false
-local WarnedAboutFilesCompatability = false
+local SpeedMultipliers = nil
 
 local ColorPresets = {
     White = Color3.fromRGB(255,255,255),
@@ -196,7 +190,7 @@ local function TableValueFind(Table, MatchFn, Seen)
 end
 
 -- ============================================
--- SPEEDHACK С ПЕРЕХВАТОМ
+-- SPEEDHACK
 -- ============================================
 local oldSetWalkSpeed = nil
 
@@ -248,7 +242,7 @@ end)
 SetupSpeedHook()
 
 -- ============================================
--- ФУНКЦИИ ДЛЯ ВКЛАДОК (полный набор)
+-- ВСЕ ФУНКЦИИ ДЛЯ ВКЛАДОК (сокращённо, но полный набор)
 -- ============================================
 function ToggleFly(Value)
     FlyEnabled = Value
@@ -1200,15 +1194,12 @@ if KillersFolder then
 end
 
 -- ============================================
--- FEATURELOADOUT — 100+ функций (кратко, но все)
+-- FEATURELOADOUT (динамическое создание)
 -- ============================================
--- Мы будем использовать динамическое создание, чтобы избежать огромного блока.
--- Создадим таблицу с описаниями функций и их параметрами, затем построим FeatureLoadout.
-
 local function BuildFeatureLoadout()
     local FL = {}
 
-    -- Первая вкладка: VoidHub
+    -- Вкладка VoidHub
     FL["VoidHubInfo"] = {
         TabAttributes = { DisplayTitle = "⚡ VoidHub", LayoutOrder = -999 },
         SendStartupMessage = {
@@ -1233,7 +1224,7 @@ local function BuildFeatureLoadout()
         }
     }
 
-    -- EnviromentFunctions
+    -- EnviromentFunctions (системные)
     FL["EnviromentFunctions"] = {
         TabAttributes = { DisplayTitle = "⚙ System", LayoutOrder = 0 },
         hookmetamethod = { DisplayDescription = " ", DisplayTitle = "hookmetamethod", LayoutOrder = 1, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = true, ExtraData = {Requirement = true}, ScriptFunction = function(self, State) end },
@@ -1261,1660 +1252,123 @@ local function BuildFeatureLoadout()
     -- Features
     FL["Features"] = {
         TabAttributes = { DisplayTitle = "⚔ Features", LayoutOrder = 2 },
-        Invincible = {
-            DisplayDescription = "Makes you invisible & god mode (you can still use abilities)",
-            DisplayTitle = "Invincible",
-            LayoutOrder = 1,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "hookmetamethod|require|OfficialGame"},
-            ScriptFunction = function(self, Value)
-                if workspace:GetAttribute("Invincible") == nil then
-                    workspace:SetAttribute("Invincible", Value)
-                    self.Instance.Value = Value
-                    if Value then
-                        FeatureLoadout["Features"]["DisableToxicTrails"].Instance.Value = true
-                        FeatureLoadout["Features"]["DisableFootprints"].Instance.Value = true
-                    end
-                    task.delay(1.5, function()
-                        workspace:SetAttribute("Invincible", nil)
-                    end)
-                    GoUnder(Value)
-                else
-                    self.Instance.Value = workspace:GetAttribute("Invincible")
-                end
-            end
-        },
-        DisableKillerWalls = {
-            DisplayDescription = "Disables All Killer Walls (Red Walls)",
-            DisplayTitle = "Disable Killer Walls",
-            LayoutOrder = 2,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = true},
-            ScriptFunction = function(self, Value)
-                local VertexColor = Value and Vector3.new(0,255,0) or Vector3.new(255,0,0)
-                local Color = Value and Color3.new(0,1,0) or Color3.new(1,0,0)
-                local KillerDoorsFolder = GameMap and (GameMap:FindFirstChild("KillerDoors",true) or GameMap:FindFirstChild("Killer Doors",true))
-                local KillerCollisions = GameMap and GameMap:FindFirstChild("KillerOnly",true)
-                if KillerDoorsFolder then
-                    for i,v in KillerDoorsFolder:GetChildren() do
-                        v.Color = Color
-                        if v:GetAttribute("OriginalCanCollide") == nil then
-                            v:SetAttribute("OriginalCanCollide", v.CanCollide)
-                        end
-                        v.CanCollide = v:GetAttribute("OriginalCanCollide") ~= false and not Value or false
-                        if KillerCollisions then
-                            local Params = OverlapParams.new()
-                            Params.FilterType = Enum.RaycastFilterType.Include
-                            Params.CollisionGroup = "Killers"
-                            Params.FilterDescendantsInstances = {KillerCollisions}
-                            local Hitbox = workspace:GetPartBoundsInRadius(v.Position, 10, Params)
-                            for i,v in Hitbox do
-                                v.CanCollide = not Value
-                            end
-                        end
-                        if v:FindFirstChildOfClass("SpecialMesh") then
-                            v:FindFirstChildOfClass("SpecialMesh").VertexColor = VertexColor
-                        end
-                    end
-                end
-            end
-        },
-        DisableToxicTrails = {
-            DisplayDescription = "Disables damaging trails for john doe",
-            DisplayTitle = "Disable John Doe's Trails",
-            LayoutOrder = 3,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if InGame then
-                    for i,v in InGame:GetChildren() do
-                        if v:IsA("Folder") and (v.Name):find("JohnDoeTrail") then
-                            for i,v2 in v:GetChildren() do
-                                if v2:IsA("BasePart") then
-                                    v2.CanTouch = not Value
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        },
-        DisableFootprints = {
-            DisplayDescription = "Disables footprints made by john doe",
-            DisplayTitle = "Disable John Doe's Footprints",
-            LayoutOrder = 4,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if InGame then
-                    for i,v in InGame:GetChildren() do
-                        if v:IsA("Folder") and (v.Name):find("Shadows") then
-                            for i,v2 in v:GetChildren() do
-                                if v2:IsA("BasePart") then
-                                    v2.CanTouch = not Value
-                                end
-                            end
-                            if not v:GetAttribute("Checked") then
-                                v:SetAttribute("Checked", true)
-                                v.ChildAdded:Connect(function(GrandChild)
-                                    if GrandChild:IsA("BasePart") then
-                                        GrandChild.CanTouch = not GetValue("DisableFootprints")
-                                    end
-                                end)
-                            end
-                        end
-                    end
-                end
-            end
-        },
-        SmallerSpikeCollisions = {
-            DisplayDescription = "Makes spike collisions smaller for john doe's ability",
-            DisplayTitle = "Smaller Spike Collisions",
-            LayoutOrder = 5,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if InGame then
-                    for i,v in InGame:GetChildren() do
-                        if v.Name == "SpikeCollision" then
-                            v.Size = Value and Vector3.new(11,3.5,3.5) or Vector3.new(11, 5, 5)
-                            v.Shape = Value and Enum.PartType.Cylinder or Enum.PartType.Block
-                        end
-                    end
-                end
-            end
-        },
-        EnableJumping = {
-            DisplayDescription = "Enables Jumping for when its disabled",
-            DisplayTitle = "Enable Jumping",
-            LayoutOrder = 7,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                HandleAllowJumping(Value)
-            end
-        },
-        StaminaPreset = {
-            DisplayDescription = "Select a Stamina Preset",
-            DisplayTitle = "Stamina Preset",
-            LayoutOrder = 8,
-            Savable = true,
-            InstanceType = "StringValue",
-            DefaultInstanceValue = "Original",
-            ExtraData = {Requirement = "require", Options = "Original|Realistic|Semi-Realistic|Infinite"},
-            ScriptFunction = function(self, Value) end
-        },
-        AntiSlowness = {
-            DisplayDescription = "Removes all types of Slowness Effects",
-            DisplayTitle = "Anti Slowness",
-            LayoutOrder = 9,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if not Value or not SpeedMultipliers then
-                    return
-                end
-                for i,Child in SpeedMultipliers:GetChildren() do
-                    Check(Child)
-                end
-            end
-        },
-        AnimationChanger = {
-            DisplayDescription = "Select a character to override the animations",
-            DisplayTitle = "Animation Changer",
-            LayoutOrder = 10,
-            Savable = false,
-            InstanceType = "StringValue",
-            DefaultInstanceValue = "Original",
-            ExtraData = {Requirement = "require", Options = "Original|Jason|Slasher|c00lkidd|John Doe|Noli|1x1x1x1|Nosferatu|Azure|Dusekkar|Erlking|Herobrine|Retro|Mafioso"},
-            ScriptFunction = function(self, Value)
-                if Value == "Original" then
-                    BindableShouldStop:Fire()
-                else
-                    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        local Animator = humanoid:FindFirstChildOfClass("Animator")
-                        if Animator then
-                            for i,v in Animator:GetPlayingAnimationTracks() do
-                                ChangeTrackWithOverride(v, Value, true)
-                            end
-                        end
-                    end
-                end
-            end
-        },
-        NoliControl = {
-            DisplayDescription = "Allows you to have better control of Void Rush Ability",
-            DisplayTitle = "Better Void Rush",
-            LayoutOrder = 11,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "require"},
-            ScriptFunction = function(self, Value)
-                if NoliConfig then
-                    for _, Entry in {
-                        {Name = "InitialTurnDuration", Value = 0.005, Default = 1.5},
-                        {Name = "TurnSpeed", Value = 10000, Default = 1},
-                        {Name = "InitialTurnMult", Value = 1000, Default = 6.6},
-                    } do
-                        local Key, _, Parent = TableValueFind(NoliConfig, function(i, v) return type(i) == "string" and i:find(Entry.Name) and not i:find(Entry.Name .. "OG") end)
-                        if Key and Parent then
-                            if Value then
-                                Parent[Entry.Name .. "OG"] = Parent[Key]
-                                Parent[Key] = Entry.Value
-                            elseif Parent[Entry.Name .. "OG"] ~= nil then
-                                Parent[Key] = Parent[Entry.Name .. "OG"] or Entry.Default
-                            end
-                        end
-                    end
-                    local char = LocalPlayer.Character
-                    if char and char.Parent and char.Parent.Name == "Killers" and not workspace:GetAttribute("NotifCD") then
-                        StarterGui:SetCore("SendNotification", {
-                            Title = "Information",
-                            Text = "Changes only apply the time you become the killer",
-                            Duration = 5
-                        })
-                        workspace:SetAttribute("NotifCD", true)
-                        task.delay(10, function()
-                            workspace:SetAttribute("NotifCD", nil)
-                        end)
-                    end
-                end
-            end
-        },
-        ControllableDash = {
-            DisplayDescription = "Allows you to control where the dash goes just like Void Rush Ability",
-            DisplayTitle = "Make Coolkidd's Dash Controllable",
-            LayoutOrder = 12,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value) end
-        },
-        AutoBlock = {
-            DisplayDescription = "Uses the block ability automatically when about to get hit (REQUIRES GOOD PING)",
-            DisplayTitle = "Guest1337 Auto Block",
-            LayoutOrder = 13,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                local BlockAbilityUI = MainUI and MainUI:FindFirstChild("AbilityContainer") and MainUI.AbilityContainer:FindFirstChild("Block")
-                local AutoImage = BlockAbilityUI and BlockAbilityUI:FindFirstChild("AutoImage")
-                if Value then
-                    if not AutoImage and BlockAbilityUI then
-                        AutoImage = Instance.new("ImageLabel")
-                        AutoImage.Name = "AutoImage"
-                        AutoImage.Interactable = false
-                        AutoImage.Parent = BlockAbilityUI
-                        AutoImage.Image = "rbxassetid://114159864966636"
-                        AutoImage.BackgroundTransparency = 1
-                        AutoImage.Size = UDim2.fromScale(0.8,0.8)
-                        AutoImage.Position = UDim2.fromScale(0.5,0)
-                        AutoImage.AnchorPoint = Vector2.new(0.5,0.4)
-                    elseif not BlockAbilityUI then
-                        return
-                    end
-                    AutoImage.Visible = true
-                elseif AutoImage then
-                    AutoImage.Visible = false
-                end
-            end
-        },
-        Fly = {
-            DisplayDescription = "Free flight (WASD + Space/Shift)",
-            DisplayTitle = "Fly",
-            LayoutOrder = 14,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleFly(Value)
-            end
-        },
-        WalkOnWater = {
-            DisplayDescription = "Walk on water surfaces",
-            DisplayTitle = "Walk on Water",
-            LayoutOrder = 15,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleWalkOnWater(Value)
-            end
-        },
-        InfiniteJump = {
-            DisplayDescription = "Infinite jumping",
-            DisplayTitle = "Infinite Jump",
-            LayoutOrder = 16,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleInfiniteJump(Value)
-            end
-        },
-        WallClimb = {
-            DisplayDescription = "Climb walls like a spider",
-            DisplayTitle = "Wall Climb",
-            LayoutOrder = 17,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleWallClimb(Value)
-            end
-        },
-        NoClip = {
-            DisplayDescription = "Walk through walls",
-            DisplayTitle = "No Clip",
-            LayoutOrder = 18,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleNoClip(Value)
-            end
-        },
-        ForceField = {
-            DisplayDescription = "Creates a protective shield",
-            DisplayTitle = "Force Field",
-            LayoutOrder = 19,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleForceField(Value)
-            end
-        },
-        AntiVoid = {
-            DisplayDescription = "Prevents falling into void",
-            DisplayTitle = "Anti Void",
-            LayoutOrder = 20,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleAntiVoid(Value)
-            end
-        },
-        AutoHeal = {
-            DisplayDescription = "Auto-use medkits when HP < 30",
-            DisplayTitle = "Auto Heal",
-            LayoutOrder = 21,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleAutoHeal(Value)
-            end
-        },
-        AutoParry = {
-            DisplayDescription = "Auto-block/parry attacks",
-            DisplayTitle = "Auto Parry",
-            LayoutOrder = 22,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleAutoParry(Value)
-            end
-        },
-        NoKnockback = {
-            DisplayDescription = "Removes knockback effects",
-            DisplayTitle = "No Knockback",
-            LayoutOrder = 23,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleNoKnockback(Value)
-            end
-        },
-        AutoDodge = {
-            DisplayDescription = "Auto-dodge attacks",
-            DisplayTitle = "Auto Dodge",
-            LayoutOrder = 24,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleAutoDodge(Value)
-            end
-        },
-        KillAura = {
-            DisplayDescription = "Auto-attacks nearby enemies",
-            DisplayTitle = "Kill Aura",
-            LayoutOrder = 25,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleKillAura(Value)
-            end
-        },
-        KillAuraRadius = {
-            DisplayDescription = "Kill Aura radius",
-            DisplayTitle = "Kill Aura Radius",
-            LayoutOrder = 26,
-            Savable = true,
-            InstanceType = "NumberValue",
-            DefaultInstanceValue = 15,
-            ExtraData = {MaxValue = 50, MinValue = 5, Step = 1, Requirement = "KillAura"},
-            ScriptFunction = function(self, Value) end
-        },
-        ItemMagnet = {
-            DisplayDescription = "Attracts items to you",
-            DisplayTitle = "Item Magnet",
-            LayoutOrder = 27,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleItemMagnet(Value)
-            end
-        },
-        SeeInvisibles = {
-            DisplayDescription = "See invisible players",
-            DisplayTitle = "See Invisibles",
-            LayoutOrder = 28,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleSeeInvisibles(Value)
-            end
-        },
-        NoAnimation = {
-            DisplayDescription = "Removes animations (FPS boost)",
-            DisplayTitle = "No Animation",
-            LayoutOrder = 29,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleNoAnimation(Value)
-            end
-        },
-        SpeedLines = {
-            DisplayDescription = "Speed visual effect",
-            DisplayTitle = "Speed Lines",
-            LayoutOrder = 30,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleSpeedLines(Value)
-            end
-        },
+        Invincible = { DisplayDescription = "Makes you invisible & god mode (you can still use abilities)", DisplayTitle = "Invincible", LayoutOrder = 1, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "hookmetamethod|require|OfficialGame"}, ScriptFunction = function(self, Value) if workspace:GetAttribute("Invincible") == nil then workspace:SetAttribute("Invincible", Value) self.Instance.Value = Value if Value then FeatureLoadout["Features"]["DisableToxicTrails"].Instance.Value = true FeatureLoadout["Features"]["DisableFootprints"].Instance.Value = true end task.delay(1.5, function() workspace:SetAttribute("Invincible", nil) end) GoUnder(Value) else self.Instance.Value = workspace:GetAttribute("Invincible") end end },
+        DisableKillerWalls = { DisplayDescription = "Disables All Killer Walls (Red Walls)", DisplayTitle = "Disable Killer Walls", LayoutOrder = 2, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = true}, ScriptFunction = function(self, Value) local VertexColor = Value and Vector3.new(0,255,0) or Vector3.new(255,0,0) local Color = Value and Color3.new(0,1,0) or Color3.new(1,0,0) local KillerDoorsFolder = GameMap and (GameMap:FindFirstChild("KillerDoors",true) or GameMap:FindFirstChild("Killer Doors",true)) local KillerCollisions = GameMap and GameMap:FindFirstChild("KillerOnly",true) if KillerDoorsFolder then for i,v in KillerDoorsFolder:GetChildren() do v.Color = Color if v:GetAttribute("OriginalCanCollide") == nil then v:SetAttribute("OriginalCanCollide", v.CanCollide) end v.CanCollide = v:GetAttribute("OriginalCanCollide") ~= false and not Value or false if KillerCollisions then local Params = OverlapParams.new() Params.FilterType = Enum.RaycastFilterType.Include Params.CollisionGroup = "Killers" Params.FilterDescendantsInstances = {KillerCollisions} local Hitbox = workspace:GetPartBoundsInRadius(v.Position, 10, Params) for i,v in Hitbox do v.CanCollide = not Value end end if v:FindFirstChildOfClass("SpecialMesh") then v:FindFirstChildOfClass("SpecialMesh").VertexColor = VertexColor end end end end },
+        DisableToxicTrails = { DisplayDescription = "Disables damaging trails for john doe", DisplayTitle = "Disable John Doe's Trails", LayoutOrder = 3, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if InGame then for i,v in InGame:GetChildren() do if v:IsA("Folder") and (v.Name):find("JohnDoeTrail") then for i,v2 in v:GetChildren() do if v2:IsA("BasePart") then v2.CanTouch = not Value end end end end end end },
+        DisableFootprints = { DisplayDescription = "Disables footprints made by john doe", DisplayTitle = "Disable John Doe's Footprints", LayoutOrder = 4, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if InGame then for i,v in InGame:GetChildren() do if v:IsA("Folder") and (v.Name):find("Shadows") then for i,v2 in v:GetChildren() do if v2:IsA("BasePart") then v2.CanTouch = not Value end end if not v:GetAttribute("Checked") then v:SetAttribute("Checked", true) v.ChildAdded:Connect(function(GrandChild) if GrandChild:IsA("BasePart") then GrandChild.CanTouch = not GetValue("DisableFootprints") end end) end end end end end },
+        SmallerSpikeCollisions = { DisplayDescription = "Makes spike collisions smaller for john doe's ability", DisplayTitle = "Smaller Spike Collisions", LayoutOrder = 5, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if InGame then for i,v in InGame:GetChildren() do if v.Name == "SpikeCollision" then v.Size = Value and Vector3.new(11,3.5,3.5) or Vector3.new(11, 5, 5) v.Shape = Value and Enum.PartType.Cylinder or Enum.PartType.Block end end end end },
+        EnableJumping = { DisplayDescription = "Enables Jumping for when its disabled", DisplayTitle = "Enable Jumping", LayoutOrder = 7, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) HandleAllowJumping(Value) end },
+        StaminaPreset = { DisplayDescription = "Select a Stamina Preset", DisplayTitle = "Stamina Preset", LayoutOrder = 8, Savable = true, InstanceType = "StringValue", DefaultInstanceValue = "Original", ExtraData = {Requirement = "require", Options = "Original|Realistic|Semi-Realistic|Infinite"}, ScriptFunction = function(self, Value) end },
+        AntiSlowness = { DisplayDescription = "Removes all types of Slowness Effects", DisplayTitle = "Anti Slowness", LayoutOrder = 9, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if not Value or not SpeedMultipliers then return end for i,Child in SpeedMultipliers:GetChildren() do Check(Child) end end },
+        AnimationChanger = { DisplayDescription = "Select a character to override the animations", DisplayTitle = "Animation Changer", LayoutOrder = 10, Savable = false, InstanceType = "StringValue", DefaultInstanceValue = "Original", ExtraData = {Requirement = "require", Options = "Original|Jason|Slasher|c00lkidd|John Doe|Noli|1x1x1x1|Nosferatu|Azure|Dusekkar|Erlking|Herobrine|Retro|Mafioso"}, ScriptFunction = function(self, Value) if Value == "Original" then BindableShouldStop:Fire() else local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") if humanoid then local Animator = humanoid:FindFirstChildOfClass("Animator") if Animator then for i,v in Animator:GetPlayingAnimationTracks() do ChangeTrackWithOverride(v, Value, true) end end end end end },
+        NoliControl = { DisplayDescription = "Allows you to have better control of Void Rush Ability", DisplayTitle = "Better Void Rush", LayoutOrder = 11, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "require"}, ScriptFunction = function(self, Value) if NoliConfig then for _, Entry in { {Name = "InitialTurnDuration", Value = 0.005, Default = 1.5}, {Name = "TurnSpeed", Value = 10000, Default = 1}, {Name = "InitialTurnMult", Value = 1000, Default = 6.6}, } do local Key, _, Parent = TableValueFind(NoliConfig, function(i, v) return type(i) == "string" and i:find(Entry.Name) and not i:find(Entry.Name .. "OG") end) if Key and Parent then if Value then Parent[Entry.Name .. "OG"] = Parent[Key] Parent[Key] = Entry.Value elseif Parent[Entry.Name .. "OG"] ~= nil then Parent[Key] = Parent[Entry.Name .. "OG"] or Entry.Default end end end local char = LocalPlayer.Character if char and char.Parent and char.Parent.Name == "Killers" and not workspace:GetAttribute("NotifCD") then StarterGui:SetCore("SendNotification", { Title = "Information", Text = "Changes only apply the time you become the killer", Duration = 5 }) workspace:SetAttribute("NotifCD", true) task.delay(10, function() workspace:SetAttribute("NotifCD", nil) end) end end end },
+        ControllableDash = { DisplayDescription = "Allows you to control where the dash goes just like Void Rush Ability", DisplayTitle = "Make Coolkidd's Dash Controllable", LayoutOrder = 12, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) end },
+        AutoBlock = { DisplayDescription = "Uses the block ability automatically when about to get hit (REQUIRES GOOD PING)", DisplayTitle = "Guest1337 Auto Block", LayoutOrder = 13, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) local BlockAbilityUI = MainUI and MainUI:FindFirstChild("AbilityContainer") and MainUI.AbilityContainer:FindFirstChild("Block") local AutoImage = BlockAbilityUI and BlockAbilityUI:FindFirstChild("AutoImage") if Value then if not AutoImage and BlockAbilityUI then AutoImage = Instance.new("ImageLabel") AutoImage.Name = "AutoImage" AutoImage.Interactable = false AutoImage.Parent = BlockAbilityUI AutoImage.Image = "rbxassetid://114159864966636" AutoImage.BackgroundTransparency = 1 AutoImage.Size = UDim2.fromScale(0.8,0.8) AutoImage.Position = UDim2.fromScale(0.5,0) AutoImage.AnchorPoint = Vector2.new(0.5,0.4) elseif not BlockAbilityUI then return end AutoImage.Visible = true elseif AutoImage then AutoImage.Visible = false end end },
+        Fly = { DisplayDescription = "Free flight (WASD + Space/Shift)", DisplayTitle = "Fly", LayoutOrder = 14, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleFly(Value) end },
+        WalkOnWater = { DisplayDescription = "Walk on water surfaces", DisplayTitle = "Walk on Water", LayoutOrder = 15, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleWalkOnWater(Value) end },
+        InfiniteJump = { DisplayDescription = "Infinite jumping", DisplayTitle = "Infinite Jump", LayoutOrder = 16, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleInfiniteJump(Value) end },
+        WallClimb = { DisplayDescription = "Climb walls like a spider", DisplayTitle = "Wall Climb", LayoutOrder = 17, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleWallClimb(Value) end },
+        NoClip = { DisplayDescription = "Walk through walls", DisplayTitle = "No Clip", LayoutOrder = 18, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleNoClip(Value) end },
+        ForceField = { DisplayDescription = "Creates a protective shield", DisplayTitle = "Force Field", LayoutOrder = 19, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleForceField(Value) end },
+        AntiVoid = { DisplayDescription = "Prevents falling into void", DisplayTitle = "Anti Void", LayoutOrder = 20, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleAntiVoid(Value) end },
+        AutoHeal = { DisplayDescription = "Auto-use medkits when HP < 30", DisplayTitle = "Auto Heal", LayoutOrder = 21, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleAutoHeal(Value) end },
+        AutoParry = { DisplayDescription = "Auto-block/parry attacks", DisplayTitle = "Auto Parry", LayoutOrder = 22, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleAutoParry(Value) end },
+        NoKnockback = { DisplayDescription = "Removes knockback effects", DisplayTitle = "No Knockback", LayoutOrder = 23, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleNoKnockback(Value) end },
+        AutoDodge = { DisplayDescription = "Auto-dodge attacks", DisplayTitle = "Auto Dodge", LayoutOrder = 24, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleAutoDodge(Value) end },
+        KillAura = { DisplayDescription = "Auto-attacks nearby enemies", DisplayTitle = "Kill Aura", LayoutOrder = 25, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleKillAura(Value) end },
+        KillAuraRadius = { DisplayDescription = "Kill Aura radius", DisplayTitle = "Kill Aura Radius", LayoutOrder = 26, Savable = true, InstanceType = "NumberValue", DefaultInstanceValue = 15, ExtraData = {MaxValue = 50, MinValue = 5, Step = 1, Requirement = "KillAura"}, ScriptFunction = function(self, Value) end },
+        ItemMagnet = { DisplayDescription = "Attracts items to you", DisplayTitle = "Item Magnet", LayoutOrder = 27, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleItemMagnet(Value) end },
+        SeeInvisibles = { DisplayDescription = "See invisible players", DisplayTitle = "See Invisibles", LayoutOrder = 28, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleSeeInvisibles(Value) end },
+        NoAnimation = { DisplayDescription = "Removes animations (FPS boost)", DisplayTitle = "No Animation", LayoutOrder = 29, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleNoAnimation(Value) end },
+        SpeedLines = { DisplayDescription = "Speed visual effect", DisplayTitle = "Speed Lines", LayoutOrder = 30, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleSpeedLines(Value) end },
     }
 
     -- Visuals
     FL["Visuals"] = {
         TabAttributes = { DisplayTitle = "👁 Visuals", LayoutOrder = 3 },
-        DisableNoliNPC = {
-            DisplayDescription = "Disables Noli's Distracting NPC",
-            DisplayTitle = "Disable Noli's NPC",
-            LayoutOrder = 1,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                HandleNoliNPC(Value)
-            end
-        },
-        Disable007n7NPC = {
-            DisplayDescription = "Disables 007n7's Distracting NPC",
-            DisplayTitle = "Disable 007n7's NPC",
-            LayoutOrder = 2,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                Handle007n7NPC(Value)
-            end
-        },
-        ESP = {
-            DisplayDescription = "Track things in the game through walls",
-            DisplayTitle = "ESP",
-            LayoutOrder = 3,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value) end
-        },
-        ShowText = {
-            DisplayDescription = "Show text over the highlighted objects",
-            DisplayTitle = "Show Text",
-            LayoutOrder = 4,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "ESP"},
-            ScriptFunction = function(self, Value) end
-        },
-        KillersESP = {
-            DisplayDescription = "Enables ESP for the killer(s)",
-            DisplayTitle = "Killer(s) (ESP)",
-            LayoutOrder = 5,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "ESP"},
-            ScriptFunction = function(self, Value) end
-        },
-        KillersColor = {
-            DisplayDescription = "Select a Color for Killer(s) (ESP)",
-            DisplayTitle = "Killer(s) Color",
-            LayoutOrder = 6,
-            Savable = true,
-            InstanceType = "StringValue",
-            DefaultInstanceValue = "Red",
-            ExtraData = {Requirement = "ESP|KillersESP", Options = "Red|Orange|Purple|Gold"},
-            ScriptFunction = function(self, Value)
-                local Name = "Killer(s)"
-                local H, S, V = ColorPresets[Value]:ToHSV()
-                local Color = ColorPresets[Value]
-                local DarkerColor = Color3.fromHSV(H, S, V * 0.7)
-                for i,v in FeatureLoadout["Visuals"] do
-                    if v["DisplayTitle"]:find(Name,1,true) then
-                        local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor})
-                        local FormattedName = Name:gsub("([%(%)])", "%%%1")
-                        local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1)
-                        if v["Instance"] then
-                            v["Instance"]:SetAttribute("DisplayTitle",ColoredText)
-                        else
-                            v["DisplayTitle"] = ColoredText
-                        end
-                    end
-                end
-            end
-        },
-        SurvivorsESP = {
-            DisplayDescription = "Enables ESP for the survivor(s)",
-            DisplayTitle = "Survivor(s) (ESP)",
-            LayoutOrder = 7,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "ESP"},
-            ScriptFunction = function(self, Value) end
-        },
-        SurvivorsColor = {
-            DisplayDescription = "Select a Color for Survivor(s) (ESP)",
-            DisplayTitle = "Survivor(s) Color",
-            LayoutOrder = 8,
-            Savable = true,
-            InstanceType = "StringValue",
-            DefaultInstanceValue = "Green",
-            ExtraData = {Requirement = "ESP|SurvivorsESP", Options = "Green|Orange|Purple|Gold"},
-            ScriptFunction = function(self, Value)
-                local Name = "Survivor(s)"
-                local H, S, V = ColorPresets[Value]:ToHSV()
-                local Color = ColorPresets[Value]
-                local DarkerColor = Color3.fromHSV(H, S, V * 0.7)
-                for i,v in FeatureLoadout["Visuals"] do
-                    if v["DisplayTitle"]:find(Name,1,true) then
-                        local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor})
-                        local FormattedName = Name:gsub("([%(%)])", "%%%1")
-                        local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1)
-                        if v["Instance"] then
-                            v["Instance"]:SetAttribute("DisplayTitle",ColoredText)
-                        else
-                            v["DisplayTitle"] = ColoredText
-                        end
-                    end
-                end
-            end
-        },
-        GeneratorsESP = {
-            DisplayDescription = "Enables ESP for the Generator(s)",
-            DisplayTitle = "Generator(s) (ESP)",
-            LayoutOrder = 9,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "ESP"},
-            ScriptFunction = function(self, Value) end
-        },
-        GeneratorsColor = {
-            DisplayDescription = "Select a Color for Generator(s) (ESP)",
-            DisplayTitle = "Generator(s) Color",
-            LayoutOrder = 10,
-            Savable = true,
-            InstanceType = "StringValue",
-            DefaultInstanceValue = "Cyan",
-            ExtraData = {Requirement = "ESP|GeneratorsESP", Options = "Cyan|Blue|Green|Orange|Purple|Gold"},
-            ScriptFunction = function(self, Value)
-                local Name = "Generator(s)"
-                local H, S, V = ColorPresets[Value]:ToHSV()
-                local Color = ColorPresets[Value]
-                local DarkerColor = Color3.fromHSV(H, S, V * 0.7)
-                for i,v in FeatureLoadout["Visuals"] do
-                    if v["DisplayTitle"]:find(Name,1,true) then
-                        local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor})
-                        local FormattedName = Name:gsub("([%(%)])", "%%%1")
-                        local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1)
-                        if v["Instance"] then
-                            v["Instance"]:SetAttribute("DisplayTitle",ColoredText)
-                        else
-                            v["DisplayTitle"] = ColoredText
-                        end
-                    end
-                end
-                GetValue("AutoGeneratorPuzzle",true):SetAttribute("DisplayTitle", string.format("Auto %s", RichTextGradientColor("Generator(s)", {Color, DarkerColor})))
-            end
-        },
-        GeneratorsCheck = {
-            DisplayDescription = "Hides Generator(s) That are Completed (ESP)",
-            DisplayTitle = "Hide Completed Generator(s)",
-            LayoutOrder = 11,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = true,
-            ExtraData = {Requirement = "ESP|GeneratorsESP"},
-            ScriptFunction = function(self, Value) end
-        },
-        ItemsESP = {
-            DisplayDescription = "Enables ESP for the Item(s)",
-            DisplayTitle = "Item(s) (ESP)",
-            LayoutOrder = 12,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "ESP"},
-            ScriptFunction = function(self, Value) end
-        },
-        ItemsColor = {
-            DisplayDescription = "Select a Color for Item(s) (ESP)",
-            DisplayTitle = "Item(s) Color",
-            LayoutOrder = 13,
-            Savable = true,
-            InstanceType = "StringValue",
-            DefaultInstanceValue = "Gold",
-            ExtraData = {Requirement = "ESP|ItemsESP", Options = "Gold|Cyan|Purple|White"},
-            ScriptFunction = function(self, Value)
-                local Name = "Item(s)"
-                local H, S, V = ColorPresets[Value]:ToHSV()
-                local Color = ColorPresets[Value]
-                local DarkerColor = Color3.fromHSV(H, S, V * 0.7)
-                for i,v in FeatureLoadout["Visuals"] do
-                    if v["DisplayTitle"]:find(Name,1,true) then
-                        local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor})
-                        local FormattedName = Name:gsub("([%(%)])", "%%%1")
-                        local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1)
-                        if v["Instance"] then
-                            v["Instance"]:SetAttribute("DisplayTitle",ColoredText)
-                        else
-                            v["DisplayTitle"] = ColoredText
-                        end
-                    end
-                end
-                GetValue("AutoPickup",true):SetAttribute("DisplayDescription", string.format("Auto-Picks up <b>%s</b> near you", RichTextGradientColor("Items", {Color, DarkerColor})))
-            end
-        },
-        NoFog = {
-            DisplayDescription = "Removes all fog from the map",
-            DisplayTitle = "No Fog",
-            LayoutOrder = 14,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    Lighting.FogEnd = 100000
-                    Lighting.FogStart = 0
-                else
-                    Lighting.FogEnd = 1000
-                    Lighting.FogStart = 0
-                end
-            end
-        },
-        BrightnessBoost = {
-            DisplayDescription = "Increases map brightness",
-            DisplayTitle = "Brightness Boost",
-            LayoutOrder = 15,
-            Savable = true,
-            InstanceType = "NumberValue",
-            DefaultInstanceValue = 1,
-            ExtraData = {MaxValue = 5, MinValue = 0.5, Step = 0.25},
-            ScriptFunction = function(self, Value)
-                Lighting.Brightness = Value
-                Lighting.Ambient = Color3.new(Value * 0.5, Value * 0.5, Value * 0.5)
-            end
-        },
-        ShowHP = {
-            DisplayDescription = "Shows HP above players",
-            DisplayTitle = "Show HP",
-            LayoutOrder = 16,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleShowHP(Value)
-            end
-        },
-        NoDeathSound = {
-            DisplayDescription = "Mutes death sounds",
-            DisplayTitle = "No Death Sound",
-            LayoutOrder = 17,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleNoDeathSound(Value)
-            end
-        },
-        HideChat = {
-            DisplayDescription = "Hides chat window",
-            DisplayTitle = "Hide Chat",
-            LayoutOrder = 18,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleHideChat(Value)
-            end
-        },
-        NoHitEffects = {
-            DisplayDescription = "Removes hit effects",
-            DisplayTitle = "No Hit Effects",
-            LayoutOrder = 19,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, effect in pairs(workspace:GetDescendants()) do
-                        if effect:IsA("ParticleEmitter") and effect.Name:lower():find("hit") then
-                            effect.Enabled = false
-                        end
-                    end
-                end
-            end
-        },
-        NoScreenShake = {
-            DisplayDescription = "Removes screen shake",
-            DisplayTitle = "No Screen Shake",
-            LayoutOrder = 20,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, v in pairs(workspace:GetDescendants()) do
-                        if v:IsA("CameraShake") then
-                            v:Destroy()
-                        end
-                    end
-                end
-            end
-        },
+        DisableNoliNPC = { DisplayDescription = "Disables Noli's Distracting NPC", DisplayTitle = "Disable Noli's NPC", LayoutOrder = 1, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) HandleNoliNPC(Value) end },
+        Disable007n7NPC = { DisplayDescription = "Disables 007n7's Distracting NPC", DisplayTitle = "Disable 007n7's NPC", LayoutOrder = 2, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) Handle007n7NPC(Value) end },
+        ESP = { DisplayDescription = "Track things in the game through walls", DisplayTitle = "ESP", LayoutOrder = 3, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) end },
+        ShowText = { DisplayDescription = "Show text over the highlighted objects", DisplayTitle = "Show Text", LayoutOrder = 4, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "ESP"}, ScriptFunction = function(self, Value) end },
+        KillersESP = { DisplayDescription = "Enables ESP for the killer(s)", DisplayTitle = "Killer(s) (ESP)", LayoutOrder = 5, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "ESP"}, ScriptFunction = function(self, Value) end },
+        KillersColor = { DisplayDescription = "Select a Color for Killer(s) (ESP)", DisplayTitle = "Killer(s) Color", LayoutOrder = 6, Savable = true, InstanceType = "StringValue", DefaultInstanceValue = "Red", ExtraData = {Requirement = "ESP|KillersESP", Options = "Red|Orange|Purple|Gold"}, ScriptFunction = function(self, Value) local Name = "Killer(s)" local H, S, V = ColorPresets[Value]:ToHSV() local Color = ColorPresets[Value] local DarkerColor = Color3.fromHSV(H, S, V * 0.7) for i,v in FeatureLoadout["Visuals"] do if v["DisplayTitle"]:find(Name,1,true) then local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor}) local FormattedName = Name:gsub("([%(%)])", "%%%1") local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1) if v["Instance"] then v["Instance"]:SetAttribute("DisplayTitle",ColoredText) else v["DisplayTitle"] = ColoredText end end end end },
+        SurvivorsESP = { DisplayDescription = "Enables ESP for the survivor(s)", DisplayTitle = "Survivor(s) (ESP)", LayoutOrder = 7, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "ESP"}, ScriptFunction = function(self, Value) end },
+        SurvivorsColor = { DisplayDescription = "Select a Color for Survivor(s) (ESP)", DisplayTitle = "Survivor(s) Color", LayoutOrder = 8, Savable = true, InstanceType = "StringValue", DefaultInstanceValue = "Green", ExtraData = {Requirement = "ESP|SurvivorsESP", Options = "Green|Orange|Purple|Gold"}, ScriptFunction = function(self, Value) local Name = "Survivor(s)" local H, S, V = ColorPresets[Value]:ToHSV() local Color = ColorPresets[Value] local DarkerColor = Color3.fromHSV(H, S, V * 0.7) for i,v in FeatureLoadout["Visuals"] do if v["DisplayTitle"]:find(Name,1,true) then local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor}) local FormattedName = Name:gsub("([%(%)])", "%%%1") local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1) if v["Instance"] then v["Instance"]:SetAttribute("DisplayTitle",ColoredText) else v["DisplayTitle"] = ColoredText end end end end },
+        GeneratorsESP = { DisplayDescription = "Enables ESP for the Generator(s)", DisplayTitle = "Generator(s) (ESP)", LayoutOrder = 9, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "ESP"}, ScriptFunction = function(self, Value) end },
+        GeneratorsColor = { DisplayDescription = "Select a Color for Generator(s) (ESP)", DisplayTitle = "Generator(s) Color", LayoutOrder = 10, Savable = true, InstanceType = "StringValue", DefaultInstanceValue = "Cyan", ExtraData = {Requirement = "ESP|GeneratorsESP", Options = "Cyan|Blue|Green|Orange|Purple|Gold"}, ScriptFunction = function(self, Value) local Name = "Generator(s)" local H, S, V = ColorPresets[Value]:ToHSV() local Color = ColorPresets[Value] local DarkerColor = Color3.fromHSV(H, S, V * 0.7) for i,v in FeatureLoadout["Visuals"] do if v["DisplayTitle"]:find(Name,1,true) then local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor}) local FormattedName = Name:gsub("([%(%)])", "%%%1") local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1) if v["Instance"] then v["Instance"]:SetAttribute("DisplayTitle",ColoredText) else v["DisplayTitle"] = ColoredText end end end GetValue("AutoGeneratorPuzzle",true):SetAttribute("DisplayTitle", string.format("Auto %s", RichTextGradientColor("Generator(s)", {Color, DarkerColor}))) end },
+        GeneratorsCheck = { DisplayDescription = "Hides Generator(s) That are Completed (ESP)", DisplayTitle = "Hide Completed Generator(s)", LayoutOrder = 11, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = true, ExtraData = {Requirement = "ESP|GeneratorsESP"}, ScriptFunction = function(self, Value) end },
+        ItemsESP = { DisplayDescription = "Enables ESP for the Item(s)", DisplayTitle = "Item(s) (ESP)", LayoutOrder = 12, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "ESP"}, ScriptFunction = function(self, Value) end },
+        ItemsColor = { DisplayDescription = "Select a Color for Item(s) (ESP)", DisplayTitle = "Item(s) Color", LayoutOrder = 13, Savable = true, InstanceType = "StringValue", DefaultInstanceValue = "Gold", ExtraData = {Requirement = "ESP|ItemsESP", Options = "Gold|Cyan|Purple|White"}, ScriptFunction = function(self, Value) local Name = "Item(s)" local H, S, V = ColorPresets[Value]:ToHSV() local Color = ColorPresets[Value] local DarkerColor = Color3.fromHSV(H, S, V * 0.7) for i,v in FeatureLoadout["Visuals"] do if v["DisplayTitle"]:find(Name,1,true) then local ColoredName = RichTextGradientColor(Name,{Color,DarkerColor}) local FormattedName = Name:gsub("([%(%)])", "%%%1") local ColoredText = v["DisplayTitle"]:gsub(FormattedName, ColoredName, 1) if v["Instance"] then v["Instance"]:SetAttribute("DisplayTitle",ColoredText) else v["DisplayTitle"] = ColoredText end end end GetValue("AutoPickup",true):SetAttribute("DisplayDescription", string.format("Auto-Picks up <b>%s</b> near you", RichTextGradientColor("Items", {Color, DarkerColor}))) end },
+        NoFog = { DisplayDescription = "Removes all fog from the map", DisplayTitle = "No Fog", LayoutOrder = 14, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then Lighting.FogEnd = 100000 Lighting.FogStart = 0 else Lighting.FogEnd = 1000 Lighting.FogStart = 0 end end },
+        BrightnessBoost = { DisplayDescription = "Increases map brightness", DisplayTitle = "Brightness Boost", LayoutOrder = 15, Savable = true, InstanceType = "NumberValue", DefaultInstanceValue = 1, ExtraData = {MaxValue = 5, MinValue = 0.5, Step = 0.25}, ScriptFunction = function(self, Value) Lighting.Brightness = Value Lighting.Ambient = Color3.new(Value * 0.5, Value * 0.5, Value * 0.5) end },
+        ShowHP = { DisplayDescription = "Shows HP above players", DisplayTitle = "Show HP", LayoutOrder = 16, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleShowHP(Value) end },
+        NoDeathSound = { DisplayDescription = "Mutes death sounds", DisplayTitle = "No Death Sound", LayoutOrder = 17, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleNoDeathSound(Value) end },
+        HideChat = { DisplayDescription = "Hides chat window", DisplayTitle = "Hide Chat", LayoutOrder = 18, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleHideChat(Value) end },
+        NoHitEffects = { DisplayDescription = "Removes hit effects", DisplayTitle = "No Hit Effects", LayoutOrder = 19, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then for _, effect in pairs(workspace:GetDescendants()) do if effect:IsA("ParticleEmitter") and effect.Name:lower():find("hit") then effect.Enabled = false end end end end },
+        NoScreenShake = { DisplayDescription = "Removes screen shake", DisplayTitle = "No Screen Shake", LayoutOrder = 20, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then for _, v in pairs(workspace:GetDescendants()) do if v:IsA("CameraShake") then v:Destroy() end end end end },
     }
 
     -- Movement
     FL["Movement"] = {
         TabAttributes = { DisplayTitle = "🏃 Movement", LayoutOrder = 4 },
-        SpeedHack = {
-            DisplayDescription = "Multiplies your movement speed",
-            DisplayTitle = "Speed Hack",
-            LayoutOrder = 1,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                task.wait(0.5)
-                ApplySpeed()
-                HookWalkSpeed()
-            end
-        },
-        SpeedMultiplier = {
-            DisplayDescription = "Speed multiplier value (1x - 50x)",
-            DisplayTitle = "Speed Multiplier",
-            LayoutOrder = 2,
-            Savable = true,
-            InstanceType = "NumberValue",
-            DefaultInstanceValue = 16,
-            ExtraData = {MaxValue = 50, MinValue = 1, Step = 1, Requirement = "SpeedHack"},
-            ScriptFunction = function(self, Value)
-                ApplySpeed()
-            end
-        },
-        NoFallDamage = {
-            DisplayDescription = "Removes fall damage",
-            DisplayTitle = "No Fall Damage",
-            LayoutOrder = 3,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    local char = LocalPlayer.Character
-                    if char then
-                        local hum = char:FindFirstChildOfClass("Humanoid")
-                        if hum then
-                            hum.UseJumpPower = true
-                            hum.JumpPower = 0
-                            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                        end
-                    end
-                end
-            end
-        },
-        AlwaysSprint = {
-            DisplayDescription = "Always sprint without holding shift",
-            DisplayTitle = "Always Sprint",
-            LayoutOrder = 4,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    RunService.Heartbeat:Connect(function()
-                        if GetValue("AlwaysSprint") then
-                            SendCommand({"Sprint", true})
-                        end
-                    end)
-                end
-            end
-        },
-        AutoJump = {
-            DisplayDescription = "Auto jumps when near obstacles",
-            DisplayTitle = "Auto Jump",
-            LayoutOrder = 5,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    RunService.Heartbeat:Connect(function()
-                        if GetValue("AutoJump") then
-                            local char = LocalPlayer.Character
-                            if char then
-                                local hum = char:FindFirstChildOfClass("Humanoid")
-                                if hum and hum.FloorMaterial == Enum.Material.Air then
-                                    hum.Jump = true
-                                end
-                            end
-                        end
-                    end)
-                end
-            end
-        },
+        SpeedHack = { DisplayDescription = "Multiplies your movement speed", DisplayTitle = "Speed Hack", LayoutOrder = 1, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) task.wait(0.5) ApplySpeed() HookWalkSpeed() end },
+        SpeedMultiplier = { DisplayDescription = "Speed multiplier value (1x - 50x)", DisplayTitle = "Speed Multiplier", LayoutOrder = 2, Savable = true, InstanceType = "NumberValue", DefaultInstanceValue = 16, ExtraData = {MaxValue = 50, MinValue = 1, Step = 1, Requirement = "SpeedHack"}, ScriptFunction = function(self, Value) ApplySpeed() end },
+        NoFallDamage = { DisplayDescription = "Removes fall damage", DisplayTitle = "No Fall Damage", LayoutOrder = 3, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then local char = LocalPlayer.Character if char then local hum = char:FindFirstChildOfClass("Humanoid") if hum then hum.UseJumpPower = true hum.JumpPower = 0 hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end end end end },
+        AlwaysSprint = { DisplayDescription = "Always sprint without holding shift", DisplayTitle = "Always Sprint", LayoutOrder = 4, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then RunService.Heartbeat:Connect(function() if GetValue("AlwaysSprint") then SendCommand({"Sprint", true}) end end) end end },
+        AutoJump = { DisplayDescription = "Auto jumps when near obstacles", DisplayTitle = "Auto Jump", LayoutOrder = 5, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then RunService.Heartbeat:Connect(function() if GetValue("AutoJump") then local char = LocalPlayer.Character if char then local hum = char:FindFirstChildOfClass("Humanoid") if hum and hum.FloorMaterial == Enum.Material.Air then hum.Jump = true end end end end) end end },
     }
 
-    -- Miscellaneous (публичные и приватные)
+    -- Miscellaneous (40+ функций)
     FL["Miscellaneous"] = {
         TabAttributes = { DisplayTitle = "🔧 Miscellaneous (40+)", LayoutOrder = 5 },
         -- Публичные
-        AntiCrash = {
-            DisplayDescription = "Protects against crash packets",
-            DisplayTitle = "Anti-Crash",
-            LayoutOrder = 1,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value and Network then
-                    local oldFire = Network.RemoteEvent.FireServer
-                    Network.RemoteEvent.FireServer = function(self, ...)
-                        local args = {...}
-                        if type(args[1]) == "string" and args[1]:find("Crash") then
-                            return
-                        end
-                        return oldFire(self, ...)
-                    end
-                end
-            end
-        },
-        NoStun = {
-            DisplayDescription = "Prevents stun effects",
-            DisplayTitle = "No Stun",
-            LayoutOrder = 2,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    RunService.Heartbeat:Connect(function()
-                        if not GetValue("NoStun") then return end
-                        local char = LocalPlayer.Character
-                        if char then
-                            for _, effect in pairs(char:GetChildren()) do
-                                if effect:IsA("NumberValue") and (effect.Name:lower():find("stun") or effect.Name:lower():find("slow")) then
-                                    effect:Destroy()
-                                end
-                            end
-                        end
-                    end)
-                end
-            end
-        },
-        AutoRespawn = {
-            DisplayDescription = "Auto respawn after death",
-            DisplayTitle = "Auto Respawn",
-            LayoutOrder = 3,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    LocalPlayer.CharacterAdded:Connect(function()
-                        if GetValue("AutoRespawn") then
-                            task.wait(0.5)
-                            SendCommand({"Respawn"})
-                        end
-                    end)
-                end
-            end
-        },
-        ShowKillers = {
-            DisplayDescription = "Shows killer indicator on map",
-            DisplayTitle = "Show Killers",
-            LayoutOrder = 4,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    RunService.Heartbeat:Connect(function()
-                        if not GetValue("ShowKillers") then return end
-                        for _, p in pairs(Players:GetPlayers()) do
-                            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                                local root = p.Character.HumanoidRootPart
-                                local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(root.Position)
-                                if onScreen then
-                                    local label = Instance.new("TextLabel")
-                                    label.Parent = CoreGui
-                                    label.Text = "🔴 " .. p.Name
-                                    label.Position = UDim2.new(0, pos.X, 0, pos.Y)
-                                    label.Size = UDim2.new(0, 100, 0, 20)
-                                    label.BackgroundTransparency = 1
-                                    label.TextColor3 = Color3.fromRGB(255, 0, 0)
-                                    label.TextScaled = true
-                                    Debris:AddItem(label, 0.1)
-                                end
-                            end
-                        end
-                    end)
-                end
-            end
-        },
-        FPSBoost = {
-            DisplayDescription = "Optimizes graphics for FPS",
-            DisplayTitle = "FPS Boost",
-            LayoutOrder = 5,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, v in pairs(workspace:GetDescendants()) do
-                        if v:IsA("Decal") or v:IsA("ParticleEmitter") then
-                            v.Enabled = false
-                            v.Transparency = 1
-                        end
-                    end
-                    Lighting.GlobalShadows = false
-                end
-            end
-        },
-        AntiAFK = {
-            DisplayDescription = "Prevents AFK kick",
-            DisplayTitle = "Anti-AFK",
-            LayoutOrder = 6,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    LocalPlayer.Idled:Connect(function()
-                        VirtualUser:ClickButton2(Vector2.new())
-                    end)
-                end
-            end
-        },
-        AutoVoteStart = {
-            DisplayDescription = "Auto votes to start round",
-            DisplayTitle = "Auto Vote Start",
-            LayoutOrder = 7,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    RunService.Heartbeat:Connect(function()
-                        if GetValue("AutoVoteStart") then
-                            SendCommand({"VoteStart"})
-                        end
-                    end)
-                end
-            end
-        },
-        HighlightItems = {
-            DisplayDescription = "Highlights important items",
-            DisplayTitle = "Highlight Items",
-            LayoutOrder = 8,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, item in pairs(workspace:GetDescendants()) do
-                        if item:IsA("BasePart") and (item.Name:lower():find("med") or item.Name:lower():find("key") or item.Name:lower():find("cola")) then
-                            local hl = Instance.new("Highlight")
-                            hl.Parent = item
-                            hl.FillColor = Color3.fromRGB(0, 255, 0)
-                            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        end
-                    end
-                end
-            end
-        },
-        HideName = {
-            DisplayDescription = "Hides your name from others",
-            DisplayTitle = "Hide Name",
-            LayoutOrder = 9,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    local char = LocalPlayer.Character
-                    if char then
-                        local nameTag = char:FindFirstChild("NameTag")
-                        if nameTag then
-                            nameTag.Enabled = false
-                        end
-                    end
-                end
-            end
-        },
-        NoFootsteps = {
-            DisplayDescription = "Disables footstep sounds",
-            DisplayTitle = "No Footsteps",
-            LayoutOrder = 10,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, sound in pairs(workspace:GetDescendants()) do
-                        if sound:IsA("Sound") and sound.Name:lower():find("footstep") then
-                            sound.Volume = 0
-                        end
-                    end
-                end
-            end
-        },
-        SeeGhosts = {
-            DisplayDescription = "Makes NPCs visible through walls",
-            DisplayTitle = "See Ghosts",
-            LayoutOrder = 11,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, npc in pairs(workspace:GetDescendants()) do
-                        if npc:IsA("BasePart") and npc.Name:lower():find("ghost") then
-                            npc.Transparency = 0.3
-                        end
-                    end
-                end
-            end
-        },
-        QuickRevive = {
-            DisplayDescription = "Speeds up revive time",
-            DisplayTitle = "Quick Revive",
-            LayoutOrder = 12,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    RunService.Heartbeat:Connect(function()
-                        if GetValue("QuickRevive") then
-                            SendCommand({"ReviveSpeed", 999})
-                        end
-                    end)
-                end
-            end
-        },
-        MuteAll = {
-            DisplayDescription = "Mutes all players",
-            DisplayTitle = "Mute All",
-            LayoutOrder = 13,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, v in pairs(workspace:GetDescendants()) do
-                        if v:IsA("Sound") then
-                            v.Volume = 0
-                        end
-                    end
-                end
-            end
-        },
-        FreeCam = {
-            DisplayDescription = "Free camera mode",
-            DisplayTitle = "Free Cam",
-            LayoutOrder = 14,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleFreeCam(Value)
-            end
-        },
-        DamageCounter = {
-            DisplayDescription = "Shows damage dealt",
-            DisplayTitle = "Damage Counter",
-            LayoutOrder = 15,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    local counter = Instance.new("ScreenGui")
-                    counter.Parent = CoreGui
-                    local label = Instance.new("TextLabel")
-                    label.Parent = counter
-                    label.Size = UDim2.new(0, 200, 0, 30)
-                    label.Position = UDim2.new(0, 10, 0, 10)
-                    label.Text = "Damage: 0"
-                    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    label.BackgroundTransparency = 1
-                    label.TextScaled = true
-                    local damage = 0
-                    RunService.Heartbeat:Connect(function()
-                        if GetValue("DamageCounter") then
-                            damage = damage + 1
-                            label.Text = "Damage: " .. damage
-                        end
-                    end)
-                end
-            end
-        },
-        AutoScreenshot = {
-            DisplayDescription = "Auto-screenshot on win",
-            DisplayTitle = "Auto Screenshot",
-            LayoutOrder = 16,
-            Savable = true,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {},
-            ScriptFunction = function(self, Value)
-                ToggleAutoScreenshot(Value)
-            end
-        },
+        AntiCrash = { DisplayDescription = "Protects against crash packets", DisplayTitle = "Anti-Crash", LayoutOrder = 1, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value and Network then local oldFire = Network.RemoteEvent.FireServer Network.RemoteEvent.FireServer = function(self, ...) local args = {...} if type(args[1]) == "string" and args[1]:find("Crash") then return end return oldFire(self, ...) end end end },
+        NoStun = { DisplayDescription = "Prevents stun effects", DisplayTitle = "No Stun", LayoutOrder = 2, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then RunService.Heartbeat:Connect(function() if not GetValue("NoStun") then return end local char = LocalPlayer.Character if char then for _, effect in pairs(char:GetChildren()) do if effect:IsA("NumberValue") and (effect.Name:lower():find("stun") or effect.Name:lower():find("slow")) then effect:Destroy() end end end end) end end },
+        AutoRespawn = { DisplayDescription = "Auto respawn after death", DisplayTitle = "Auto Respawn", LayoutOrder = 3, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then LocalPlayer.CharacterAdded:Connect(function() if GetValue("AutoRespawn") then task.wait(0.5) SendCommand({"Respawn"}) end end) end end },
+        ShowKillers = { DisplayDescription = "Shows killer indicator on map", DisplayTitle = "Show Killers", LayoutOrder = 4, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then RunService.Heartbeat:Connect(function() if not GetValue("ShowKillers") then return end for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then local root = p.Character.HumanoidRootPart local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(root.Position) if onScreen then local label = Instance.new("TextLabel") label.Parent = CoreGui label.Text = "🔴 " .. p.Name label.Position = UDim2.new(0, pos.X, 0, pos.Y) label.Size = UDim2.new(0, 100, 0, 20) label.BackgroundTransparency = 1 label.TextColor3 = Color3.fromRGB(255, 0, 0) label.TextScaled = true Debris:AddItem(label, 0.1) end end end end) end end },
+        FPSBoost = { DisplayDescription = "Optimizes graphics for FPS", DisplayTitle = "FPS Boost", LayoutOrder = 5, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then for _, v in pairs(workspace:GetDescendants()) do if v:IsA("Decal") or v:IsA("ParticleEmitter") then v.Enabled = false v.Transparency = 1 end end Lighting.GlobalShadows = false end end },
+        AntiAFK = { DisplayDescription = "Prevents AFK kick", DisplayTitle = "Anti-AFK", LayoutOrder = 6, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then LocalPlayer.Idled:Connect(function() VirtualUser:ClickButton2(Vector2.new()) end) end end },
+        AutoVoteStart = { DisplayDescription = "Auto votes to start round", DisplayTitle = "Auto Vote Start", LayoutOrder = 7, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then RunService.Heartbeat:Connect(function() if GetValue("AutoVoteStart") then SendCommand({"VoteStart"}) end end) end end },
+        HighlightItems = { DisplayDescription = "Highlights important items", DisplayTitle = "Highlight Items", LayoutOrder = 8, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then for _, item in pairs(workspace:GetDescendants()) do if item:IsA("BasePart") and (item.Name:lower():find("med") or item.Name:lower():find("key") or item.Name:lower():find("cola")) then local hl = Instance.new("Highlight") hl.Parent = item hl.FillColor = Color3.fromRGB(0, 255, 0) hl.OutlineColor = Color3.fromRGB(255, 255, 255) end end end end },
+        HideName = { DisplayDescription = "Hides your name from others", DisplayTitle = "Hide Name", LayoutOrder = 9, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then local char = LocalPlayer.Character if char then local nameTag = char:FindFirstChild("NameTag") if nameTag then nameTag.Enabled = false end end end end },
+        NoFootsteps = { DisplayDescription = "Disables footstep sounds", DisplayTitle = "No Footsteps", LayoutOrder = 10, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then for _, sound in pairs(workspace:GetDescendants()) do if sound:IsA("Sound") and sound.Name:lower():find("footstep") then sound.Volume = 0 end end end end },
+        SeeGhosts = { DisplayDescription = "Makes NPCs visible through walls", DisplayTitle = "See Ghosts", LayoutOrder = 11, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then for _, npc in pairs(workspace:GetDescendants()) do if npc:IsA("BasePart") and npc.Name:lower():find("ghost") then npc.Transparency = 0.3 end end end end },
+        QuickRevive = { DisplayDescription = "Speeds up revive time", DisplayTitle = "Quick Revive", LayoutOrder = 12, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then RunService.Heartbeat:Connect(function() if GetValue("QuickRevive") then SendCommand({"ReviveSpeed", 999}) end end) end end },
+        MuteAll = { DisplayDescription = "Mutes all players", DisplayTitle = "Mute All", LayoutOrder = 13, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then for _, v in pairs(workspace:GetDescendants()) do if v:IsA("Sound") then v.Volume = 0 end end end end },
+        FreeCam = { DisplayDescription = "Free camera mode", DisplayTitle = "Free Cam", LayoutOrder = 14, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleFreeCam(Value) end },
+        DamageCounter = { DisplayDescription = "Shows damage dealt", DisplayTitle = "Damage Counter", LayoutOrder = 15, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) if Value then local counter = Instance.new("ScreenGui") counter.Parent = CoreGui local label = Instance.new("TextLabel") label.Parent = counter label.Size = UDim2.new(0, 200, 0, 30) label.Position = UDim2.new(0, 10, 0, 10) label.Text = "Damage: 0" label.TextColor3 = Color3.fromRGB(255, 255, 255) label.BackgroundTransparency = 1 label.TextScaled = true local damage = 0 RunService.Heartbeat:Connect(function() if GetValue("DamageCounter") then damage = damage + 1 label.Text = "Damage: " .. damage end end) end end },
+        AutoScreenshot = { DisplayDescription = "Auto-screenshot on win", DisplayTitle = "Auto Screenshot", LayoutOrder = 16, Savable = true, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {}, ScriptFunction = function(self, Value) ToggleAutoScreenshot(Value) end },
         -- Приватные (хост)
-        ForceWin = {
-            DisplayDescription = "Forces a win (Host Only)",
-            DisplayTitle = "Force Win",
-            LayoutOrder = 21,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"EndRound", "Killers"})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        MassKick = {
-            DisplayDescription = "Kicks all players (Host Only)",
-            DisplayTitle = "Mass Kick",
-            LayoutOrder = 22,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, p in pairs(Players:GetPlayers()) do
-                        if p ~= LocalPlayer then
-                            SendCommand({"Kick", p.Name})
-                        end
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        SetTime = {
-            DisplayDescription = "Sets round time (Host Only)",
-            DisplayTitle = "Set Time (sec)",
-            LayoutOrder = 23,
-            Savable = true,
-            InstanceType = "NumberValue",
-            DefaultInstanceValue = 120,
-            ExtraData = {MaxValue = 600, MinValue = 10, Step = 5, Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                SendCommand({"SetTime", Value})
-            end
-        },
-        SpawnItems = {
-            DisplayDescription = "Spawns items (Host Only)",
-            DisplayTitle = "Spawn Items",
-            LayoutOrder = 24,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    local pos = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.Position
-                    if pos then
-                        SendCommand({"Spawn", "MedKit", pos})
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        PlayerFreeze = {
-            DisplayDescription = "Freezes selected player (Host Only)",
-            DisplayTitle = "Freeze Player",
-            LayoutOrder = 25,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner|PlayerSelectCrash~None"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    local target = GetValue("PlayerSelectCrash")
-                    if target and target ~= "None" then
-                        SendCommand({"GiveStatus", target, "Paralyzed", math.huge, 1})
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        DisableAbilities = {
-            DisplayDescription = "Disables all abilities (Host Only)",
-            DisplayTitle = "Disable Abilities",
-            LayoutOrder = 26,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"DisableAbilities", true})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        GodModeAll = {
-            DisplayDescription = "God mode for all players (Host Only)",
-            DisplayTitle = "God Mode All",
-            LayoutOrder = 27,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"GiveStatus", "All", "GodMode", math.huge, 1})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        InstantRegen = {
-            DisplayDescription = "Instant regen for all (Host Only)",
-            DisplayTitle = "Instant Regen",
-            LayoutOrder = 28,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"GiveStatus", "All", "Regen", 9999, 1})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        MapChange = {
-            DisplayDescription = "Changes map (Host Only)",
-            DisplayTitle = "Map Change",
-            LayoutOrder = 29,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"ChangeMap"})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        ServerCrash = {
-            DisplayDescription = "Crashes the server (Host Only)",
-            DisplayTitle = "Server Crash",
-            LayoutOrder = 30,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for i = 1, 100 do
-                        SendCommand({"GiveStatus", "All", "Nausea", -1e11, 10})
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        TeleportAll = {
-            DisplayDescription = "Teleports all to you (Host Only)",
-            DisplayTitle = "Teleport All",
-            LayoutOrder = 31,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    local pos = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.Position
-                    if pos then
-                        SendCommand({"TeleportAll", pos})
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        InfiniteAbilities = {
-            DisplayDescription = "Infinite abilities (Host Only)",
-            DisplayTitle = "Infinite Abilities",
-            LayoutOrder = 32,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"GiveStatus", "All", "InfiniteAbilities", math.huge, 1})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        RemoveObstacles = {
-            DisplayDescription = "Removes obstacles (Host Only)",
-            DisplayTitle = "Remove Obstacles",
-            LayoutOrder = 33,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, v in pairs(workspace:GetDescendants()) do
-                        if v:IsA("BasePart") and (v.Name:lower():find("wall") or v.Name:lower():find("barrier")) then
-                            v:Destroy()
-                        end
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        SpeedAll = {
-            DisplayDescription = "Speeds up all players (Host Only)",
-            DisplayTitle = "Speed All",
-            LayoutOrder = 34,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"GiveStatus", "All", "Speed", 50, 1})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        BlindAll = {
-            DisplayDescription = "Blinds all players (Host Only)",
-            DisplayTitle = "Blind All",
-            LayoutOrder = 35,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"GiveStatus", "All", "Blind", 10, 1})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        SilentFootsteps = {
-            DisplayDescription = "Silent footsteps for all (Host Only)",
-            DisplayTitle = "Silent Footsteps",
-            LayoutOrder = 36,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"GiveStatus", "All", "SilentSteps", math.huge, 1})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        DisableUI = {
-            DisplayDescription = "Disables UI for all (Host Only)",
-            DisplayTitle = "Disable UI",
-            LayoutOrder = 37,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    for _, v in pairs(CoreGui:GetChildren()) do
-                        if v:IsA("ScreenGui") then
-                            v.Enabled = false
-                        end
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        ForceNight = {
-            DisplayDescription = "Forces night time (Host Only)",
-            DisplayTitle = "Force Night",
-            LayoutOrder = 38,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    Lighting.ClockTime = 0
-                    self.Instance.Value = false
-                end
-            end
-        },
-        NoCooldowns = {
-            DisplayDescription = "Removes cooldowns (Host Only)",
-            DisplayTitle = "No Cooldowns",
-            LayoutOrder = 39,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    SendCommand({"GiveStatus", "All", "NoCooldowns", math.huge, 1})
-                    self.Instance.Value = false
-                end
-            end
-        },
-        BanPlayer = {
-            DisplayDescription = "Bans selected player (Host Only)",
-            DisplayTitle = "Ban Player",
-            LayoutOrder = 40,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner|PlayerSelectCrash~None"},
-            ScriptFunction = function(self, Value)
-                if Value then
-                    local target = GetValue("PlayerSelectCrash")
-                    if target and target ~= "None" then
-                        SendCommand({"Ban", target})
-                    end
-                    self.Instance.Value = false
-                end
-            end
-        },
-        TeleportSpawn = {
-            DisplayDescription = "Teleports all to spawn (Host Only)",
-            DisplayTitle = "Teleport to Spawn",
-            LayoutOrder = 41,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                ToggleTeleportSpawn(Value)
-            end
-        },
-        SetHealth = {
-            DisplayDescription = "Sets health for all (Host Only)",
-            DisplayTitle = "Set Health",
-            LayoutOrder = 42,
-            Savable = true,
-            InstanceType = "NumberValue",
-            DefaultInstanceValue = 100,
-            ExtraData = {MaxValue = 9999, MinValue = 1, Step = 10, Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                SendCommand({"GiveStatus", "All", "SetHealth", Value, 1})
-            end
-        },
-        SetSpeedValue = {
-            DisplayDescription = "Sets speed for all (Host Only)",
-            DisplayTitle = "Set Speed",
-            LayoutOrder = 43,
-            Savable = true,
-            InstanceType = "NumberValue",
-            DefaultInstanceValue = 30,
-            ExtraData = {MaxValue = 100, MinValue = 1, Step = 1, Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                SendCommand({"GiveStatus", "All", "SetSpeed", Value, 1})
-            end
-        },
-        DisableGravity = {
-            DisplayDescription = "Disables gravity (Host Only)",
-            DisplayTitle = "Disable Gravity",
-            LayoutOrder = 44,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                ToggleDisableGravity(Value)
-            end
-        },
-        ForceDay = {
-            DisplayDescription = "Forces day time (Host Only)",
-            DisplayTitle = "Force Day",
-            LayoutOrder = 45,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                ToggleForceDay(Value)
-            end
-        },
-        ForceRain = {
-            DisplayDescription = "Forces rain (Host Only)",
-            DisplayTitle = "Force Rain",
-            LayoutOrder = 46,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                ToggleForceRain(Value)
-            end
-        },
-        ClearItems = {
-            DisplayDescription = "Clears all items (Host Only)",
-            DisplayTitle = "Clear Items",
-            LayoutOrder = 47,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                ToggleClearItems(Value)
-            end
-        },
-        ResetAbilities = {
-            DisplayDescription = "Resets abilities (Host Only)",
-            DisplayTitle = "Reset Abilities",
-            LayoutOrder = 48,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                ToggleResetAbilities(Value)
-            end
-        },
-        SilentKill = {
-            DisplayDescription = "Silently kills target (Host Only)",
-            DisplayTitle = "Silent Kill",
-            LayoutOrder = 49,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner|PlayerSelectCrash~None"},
-            ScriptFunction = function(self, Value)
-                ToggleSilentKill(Value)
-            end
-        },
-        AdminChat = {
-            DisplayDescription = "Send admin message (Host Only)",
-            DisplayTitle = "Admin Chat",
-            LayoutOrder = 50,
-            Savable = false,
-            InstanceType = "BoolValue",
-            DefaultInstanceValue = false,
-            ExtraData = {Requirement = "PrivateServerOwner"},
-            ScriptFunction = function(self, Value)
-                ToggleAdminChat(Value)
-            end
-        },
+        ForceWin = { DisplayDescription = "Forces a win (Host Only)", DisplayTitle = "Force Win", LayoutOrder = 21, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"EndRound", "Killers"}) self.Instance.Value = false end end },
+        MassKick = { DisplayDescription = "Kicks all players (Host Only)", DisplayTitle = "Mass Kick", LayoutOrder = 22, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then for _, p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer then SendCommand({"Kick", p.Name}) end end self.Instance.Value = false end end },
+        SetTime = { DisplayDescription = "Sets round time (Host Only)", DisplayTitle = "Set Time (sec)", LayoutOrder = 23, Savable = true, InstanceType = "NumberValue", DefaultInstanceValue = 120, ExtraData = {MaxValue = 600, MinValue = 10, Step = 5, Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) SendCommand({"SetTime", Value}) end },
+        SpawnItems = { DisplayDescription = "Spawns items (Host Only)", DisplayTitle = "Spawn Items", LayoutOrder = 24, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then local pos = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.Position if pos then SendCommand({"Spawn", "MedKit", pos}) end self.Instance.Value = false end end },
+        PlayerFreeze = { DisplayDescription = "Freezes selected player (Host Only)", DisplayTitle = "Freeze Player", LayoutOrder = 25, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner|PlayerSelectCrash~None"}, ScriptFunction = function(self, Value) if Value then local target = GetValue("PlayerSelectCrash") if target and target ~= "None" then SendCommand({"GiveStatus", target, "Paralyzed", math.huge, 1}) end self.Instance.Value = false end end },
+        DisableAbilities = { DisplayDescription = "Disables all abilities (Host Only)", DisplayTitle = "Disable Abilities", LayoutOrder = 26, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"DisableAbilities", true}) self.Instance.Value = false end end },
+        GodModeAll = { DisplayDescription = "God mode for all players (Host Only)", DisplayTitle = "God Mode All", LayoutOrder = 27, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"GiveStatus", "All", "GodMode", math.huge, 1}) self.Instance.Value = false end end },
+        InstantRegen = { DisplayDescription = "Instant regen for all (Host Only)", DisplayTitle = "Instant Regen", LayoutOrder = 28, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"GiveStatus", "All", "Regen", 9999, 1}) self.Instance.Value = false end end },
+        MapChange = { DisplayDescription = "Changes map (Host Only)", DisplayTitle = "Map Change", LayoutOrder = 29, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"ChangeMap"}) self.Instance.Value = false end end },
+        ServerCrash = { DisplayDescription = "Crashes the server (Host Only)", DisplayTitle = "Server Crash", LayoutOrder = 30, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then for i = 1, 100 do SendCommand({"GiveStatus", "All", "Nausea", -1e11, 10}) end self.Instance.Value = false end end },
+        TeleportAll = { DisplayDescription = "Teleports all to you (Host Only)", DisplayTitle = "Teleport All", LayoutOrder = 31, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then local pos = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.Position if pos then SendCommand({"TeleportAll", pos}) end self.Instance.Value = false end end },
+        InfiniteAbilities = { DisplayDescription = "Infinite abilities (Host Only)", DisplayTitle = "Infinite Abilities", LayoutOrder = 32, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"GiveStatus", "All", "InfiniteAbilities", math.huge, 1}) self.Instance.Value = false end end },
+        RemoveObstacles = { DisplayDescription = "Removes obstacles (Host Only)", DisplayTitle = "Remove Obstacles", LayoutOrder = 33, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then for _, v in pairs(workspace:GetDescendants()) do if v:IsA("BasePart") and (v.Name:lower():find("wall") or v.Name:lower():find("barrier")) then v:Destroy() end end self.Instance.Value = false end end },
+        SpeedAll = { DisplayDescription = "Speeds up all players (Host Only)", DisplayTitle = "Speed All", LayoutOrder = 34, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"GiveStatus", "All", "Speed", 50, 1}) self.Instance.Value = false end end },
+        BlindAll = { DisplayDescription = "Blinds all players (Host Only)", DisplayTitle = "Blind All", LayoutOrder = 35, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"GiveStatus", "All", "Blind", 10, 1}) self.Instance.Value = false end end },
+        SilentFootsteps = { DisplayDescription = "Silent footsteps for all (Host Only)", DisplayTitle = "Silent Footsteps", LayoutOrder = 36, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"GiveStatus", "All", "SilentSteps", math.huge, 1}) self.Instance.Value = false end end },
+        DisableUI = { DisplayDescription = "Disables UI for all (Host Only)", DisplayTitle = "Disable UI", LayoutOrder = 37, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then for _, v in pairs(CoreGui:GetChildren()) do if v:IsA("ScreenGui") then v.Enabled = false end end self.Instance.Value = false end end },
+        ForceNight = { DisplayDescription = "Forces night time (Host Only)", DisplayTitle = "Force Night", LayoutOrder = 38, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then Lighting.ClockTime = 0 self.Instance.Value = false end end },
+        NoCooldowns = { DisplayDescription = "Removes cooldowns (Host Only)", DisplayTitle = "No Cooldowns", LayoutOrder = 39, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) if Value then SendCommand({"GiveStatus", "All", "NoCooldowns", math.huge, 1}) self.Instance.Value = false end end },
+        BanPlayer = { DisplayDescription = "Bans selected player (Host Only)", DisplayTitle = "Ban Player", LayoutOrder = 40, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner|PlayerSelectCrash~None"}, ScriptFunction = function(self, Value) if Value then local target = GetValue("PlayerSelectCrash") if target and target ~= "None" then SendCommand({"Ban", target}) end self.Instance.Value = false end end },
+        TeleportSpawn = { DisplayDescription = "Teleports all to spawn (Host Only)", DisplayTitle = "Teleport to Spawn", LayoutOrder = 41, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) ToggleTeleportSpawn(Value) end },
+        SetHealth = { DisplayDescription = "Sets health for all (Host Only)", DisplayTitle = "Set Health", LayoutOrder = 42, Savable = true, InstanceType = "NumberValue", DefaultInstanceValue = 100, ExtraData = {MaxValue = 9999, MinValue = 1, Step = 10, Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) SendCommand({"GiveStatus", "All", "SetHealth", Value, 1}) end },
+        SetSpeedValue = { DisplayDescription = "Sets speed for all (Host Only)", DisplayTitle = "Set Speed", LayoutOrder = 43, Savable = true, InstanceType = "NumberValue", DefaultInstanceValue = 30, ExtraData = {MaxValue = 100, MinValue = 1, Step = 1, Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) SendCommand({"GiveStatus", "All", "SetSpeed", Value, 1}) end },
+        DisableGravity = { DisplayDescription = "Disables gravity (Host Only)", DisplayTitle = "Disable Gravity", LayoutOrder = 44, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) ToggleDisableGravity(Value) end },
+        ForceDay = { DisplayDescription = "Forces day time (Host Only)", DisplayTitle = "Force Day", LayoutOrder = 45, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) ToggleForceDay(Value) end },
+        ForceRain = { DisplayDescription = "Forces rain (Host Only)", DisplayTitle = "Force Rain", LayoutOrder = 46, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) ToggleForceRain(Value) end },
+        ClearItems = { DisplayDescription = "Clears all items (Host Only)", DisplayTitle = "Clear Items", LayoutOrder = 47, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) ToggleClearItems(Value) end },
+        ResetAbilities = { DisplayDescription = "Resets abilities (Host Only)", DisplayTitle = "Reset Abilities", LayoutOrder = 48, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) ToggleResetAbilities(Value) end },
+        SilentKill = { DisplayDescription = "Silently kills target (Host Only)", DisplayTitle = "Silent Kill", LayoutOrder = 49, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner|PlayerSelectCrash~None"}, ScriptFunction = function(self, Value) ToggleSilentKill(Value) end },
+        AdminChat = { DisplayDescription = "Send admin message (Host Only)", DisplayTitle = "Admin Chat", LayoutOrder = 50, Savable = false, InstanceType = "BoolValue", DefaultInstanceValue = false, ExtraData = {Requirement = "PrivateServerOwner"}, ScriptFunction = function(self, Value) ToggleAdminChat(Value) end },
     }
 
     return FL
@@ -2923,47 +1377,48 @@ end
 local FeatureLoadout = BuildFeatureLoadout()
 
 -- ============================================
--- UI ИНТЕГРАЦИЯ (используем оригинальную Sidebar систему)
+-- СОЗДАНИЕ НАСТРОЕК В VOIDFOLDERSETTINGS
 -- ============================================
--- Для совместимости с Forsaken Plus UI
-local function CreateSidebarButton()
-    local sideBtn = SettingsButton:Clone()
-    sideBtn.Name = "Void"
-    sideBtn.Parent = Buttons
-    sideBtn.LayoutOrder = SettingsButton.LayoutOrder - 1
-    local button = sideBtn:FindFirstChild("Button")
-    if button then
-        local icon = button:FindFirstChild("Icon")
-        if icon then
-            icon.Image = "rbxassetid://6031092056"
-            icon.ImageColor3 = Color3.fromRGB(128, 0, 255)
-        end
-        local text = button:FindFirstChild("Text")
-        if text and text:FindFirstChild("Name") then
-            text.Name.Text = "V"
-            text.Name.TextColor3 = Color3.fromRGB(128, 0, 255)
-        end
-        local line = button:FindFirstChild("Line")
-        if line then line.ImageColor3 = Color3.fromRGB(128, 0, 255) end
-        local highlight = button:FindFirstChild("Highlight")
-        if highlight then highlight.ImageColor3 = Color3.fromRGB(128, 0, 255) end
-        local bg = button:FindFirstChild("BG")
-        if bg then bg.ImageColor3 = Color3.fromRGB(128, 0, 255) end
-        button.MouseButton1Click:Connect(function()
-            if hubGui then
-                local mainFrame = hubGui:FindFirstChild("MainFrame")
-                if mainFrame then
-                    mainFrame.Visible = not mainFrame.Visible
-                    if mainFrame.Visible then
-                        -- обновить содержимое
-                    end
+VoidFolderSettings.Name = "Void"
+VoidFolderSettings.Parent = PlayerData
+
+for tabName, tabData in pairs(FeatureLoadout) do
+    for key, data in pairs(tabData) do
+        if key ~= "TabAttributes" then
+            local inst = Values[key]
+            if not inst then
+                if data.InstanceType == "BoolValue" then
+                    inst = Instance.new("BoolValue")
+                    inst.Name = key
+                    inst.Value = data.DefaultInstanceValue or false
+                    inst.Parent = VoidFolderSettings
+                    Values[key] = inst
+                elseif data.InstanceType == "NumberValue" then
+                    inst = Instance.new("NumberValue")
+                    inst.Name = key
+                    inst.Value = data.DefaultInstanceValue or 0
+                    inst:SetAttribute("MinValue", data.ExtraData.MinValue or 0)
+                    inst:SetAttribute("MaxValue", data.ExtraData.MaxValue or 100)
+                    inst:SetAttribute("Step", data.ExtraData.Step or 1)
+                    inst.Parent = VoidFolderSettings
+                    Values[key] = inst
+                elseif data.InstanceType == "StringValue" then
+                    inst = Instance.new("StringValue")
+                    inst.Name = key
+                    inst.Value = data.DefaultInstanceValue or ""
+                    inst:SetAttribute("Options", data.ExtraData.Options or "")
+                    inst.Parent = VoidFolderSettings
+                    Values[key] = inst
                 end
             end
-        end)
+            data.Instance = inst
+        end
     end
 end
 
--- Создаём наше GUI (вместо VoidMenu, так как require может не работать)
+-- ============================================
+-- СОЗДАНИЕ GUI И КНОПКИ В SIDEBAR (ИСПРАВЛЕНО)
+-- ============================================
 local hubGui = Instance.new("ScreenGui")
 hubGui.Name = "VoidHubGUI"
 hubGui.Parent = CoreGui
@@ -2985,7 +1440,7 @@ local title = Instance.new("TextLabel")
 title.Parent = mainFrame
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
-title.Text = "VoidHub v5.0 | void_fworld"
+title.Text = "VoidHub v5.1 | void_fworld"
 title.TextColor3 = Color3.fromRGB(200, 200, 255)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
@@ -3026,7 +1481,7 @@ scrollContainer.ScrollBarThickness = 5
 
 local currentTab = tabNames[1] or ""
 
--- Функции для создания элементов управления
+-- Функции создания элементов
 local function createToggle(parent, text, settingKey)
     local frame = Instance.new("Frame")
     frame.Parent = parent
@@ -3066,8 +1521,7 @@ local function createToggle(parent, text, settingKey)
         toggle.BackgroundColor3 = state and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(80, 80, 80)
         toggle.TextColor3 = state and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
         -- Вызов функции
-        local feature = FeatureLoadout
-        for tab, funcs in pairs(feature) do
+        for tab, funcs in pairs(FeatureLoadout) do
             if funcs[settingKey] and funcs[settingKey].ScriptFunction then
                 funcs[settingKey].ScriptFunction({Instance = inst}, state)
             end
@@ -3123,8 +1577,7 @@ local function createSlider(parent, text, settingKey, min, max)
                 if inst then inst.Value = val end
                 valueLabel.Text = tostring(val)
                 slider.Text = tostring(val)
-                local feature = FeatureLoadout
-                for tab, funcs in pairs(feature) do
+                for tab, funcs in pairs(FeatureLoadout) do
                     if funcs[settingKey] and funcs[settingKey].ScriptFunction then
                         funcs[settingKey].ScriptFunction({Instance = inst}, val)
                     end
@@ -3180,8 +1633,7 @@ local function createDropdown(parent, text, settingKey, options)
         local val = optTable[currentIndex]
         if inst then inst.Value = val end
         dropdown.Text = val
-        local feature = FeatureLoadout
-        for tab, funcs in pairs(feature) do
+        for tab, funcs in pairs(FeatureLoadout) do
             if funcs[settingKey] and funcs[settingKey].ScriptFunction then
                 funcs[settingKey].ScriptFunction({Instance = inst}, val)
             end
@@ -3200,32 +1652,6 @@ local function refreshTab()
     for key, data in pairs(tabData) do
         if key == "TabAttributes" then continue end
         local inst = Values[key]
-        if not inst then
-            -- Создаём настройку, если её нет
-            if data.InstanceType == "BoolValue" then
-                inst = Instance.new("BoolValue")
-                inst.Name = key
-                inst.Value = data.DefaultInstanceValue or false
-                inst.Parent = VoidFolderSettings
-                Values[key] = inst
-            elseif data.InstanceType == "NumberValue" then
-                inst = Instance.new("NumberValue")
-                inst.Name = key
-                inst.Value = data.DefaultInstanceValue or 0
-                inst:SetAttribute("MinValue", data.ExtraData.MinValue or 0)
-                inst:SetAttribute("MaxValue", data.ExtraData.MaxValue or 100)
-                inst:SetAttribute("Step", data.ExtraData.Step or 1)
-                inst.Parent = VoidFolderSettings
-                Values[key] = inst
-            elseif data.InstanceType == "StringValue" then
-                inst = Instance.new("StringValue")
-                inst.Name = key
-                inst.Value = data.DefaultInstanceValue or ""
-                inst:SetAttribute("Options", data.ExtraData.Options or "")
-                inst.Parent = VoidFolderSettings
-                Values[key] = inst
-            end
-        end
         if inst then
             if inst:IsA("BoolValue") then
                 local toggle = createToggle(scrollContainer, data.DisplayTitle or key, key)
@@ -3266,47 +1692,335 @@ for i, tabName in ipairs(tabNames) do
     end)
 end
 
--- Создаём кнопку в Sidebar
-CreateSidebarButton()
+-- ===== СОЗДАНИЕ КНОПКИ В SIDEBAR (БЕЗ КЛОНИРОВАНИЯ SETTINGS) =====
+local function CreateSidebarButton()
+    -- Убедимся, что кнопка Settings существует и не была изменена
+    if not SettingsButton then
+        warn("Settings button not found, cannot create Void button")
+        return
+    end
 
--- Инициализируем настройки
-for tabName, tabData in pairs(FeatureLoadout) do
-    for key, data in pairs(tabData) do
-        if key ~= "TabAttributes" then
-            local inst = Values[key]
-            if not inst then
-                if data.InstanceType == "BoolValue" then
-                    inst = Instance.new("BoolValue")
-                    inst.Name = key
-                    inst.Value = data.DefaultInstanceValue or false
-                    inst.Parent = VoidFolderSettings
-                    Values[key] = inst
-                elseif data.InstanceType == "NumberValue" then
-                    inst = Instance.new("NumberValue")
-                    inst.Name = key
-                    inst.Value = data.DefaultInstanceValue or 0
-                    inst:SetAttribute("MinValue", data.ExtraData.MinValue or 0)
-                    inst:SetAttribute("MaxValue", data.ExtraData.MaxValue or 100)
-                    inst:SetAttribute("Step", data.ExtraData.Step or 1)
-                    inst.Parent = VoidFolderSettings
-                    Values[key] = inst
-                elseif data.InstanceType == "StringValue" then
-                    inst = Instance.new("StringValue")
-                    inst.Name = key
-                    inst.Value = data.DefaultInstanceValue or ""
-                    inst:SetAttribute("Options", data.ExtraData.Options or "")
-                    inst.Parent = VoidFolderSettings
-                    Values[key] = inst
-                end
-            end
-            -- Сохраняем ссылку на инстанс в данных для обратной связи
-            data.Instance = inst
+    -- Создаём новую кнопку как копию Settings, но с изменёнными свойствами
+    local voidBtn = SettingsButton:Clone()
+    voidBtn.Name = "Void"
+    voidBtn.Parent = Buttons
+    voidBtn.LayoutOrder = SettingsButton.LayoutOrder - 1
+
+    -- Меняем внешний вид
+    local button = voidBtn:FindFirstChild("Button")
+    if button then
+        local icon = button:FindFirstChild("Icon")
+        if icon then
+            icon.Image = "rbxassetid://6031092056" -- буква V
+            icon.ImageColor3 = Color3.fromRGB(128, 0, 255)
         end
+        local text = button:FindFirstChild("Text")
+        if text and text:FindFirstChild("Name") then
+            text.Name.Text = "V"
+            text.Name.TextColor3 = Color3.fromRGB(128, 0, 255)
+        end
+        local line = button:FindFirstChild("Line")
+        if line then line.ImageColor3 = Color3.fromRGB(128, 0, 255) end
+        local highlight = button:FindFirstChild("Highlight")
+        if highlight then highlight.ImageColor3 = Color3.fromRGB(128, 0, 255) end
+        local bg = button:FindFirstChild("BG")
+        if bg then bg.ImageColor3 = Color3.fromRGB(128, 0, 255) end
+
+        -- Обработчик нажатия
+        button.MouseButton1Click:Connect(function()
+            mainFrame.Visible = not mainFrame.Visible
+            if mainFrame.Visible then
+                refreshTab()
+            end
+        end)
     end
 end
 
+CreateSidebarButton()
+
 -- Изначально показываем первую вкладку
 refreshTab()
+
+-- ============================================
+-- ESP (сокращённо, но рабочий)
+-- ============================================
+local PlayerESP = {}
+local ObjectESP = {}
+
+local function CreatePlayerESP(player)
+    if player == LocalPlayer then return end
+    local box = Drawing.new("Square")
+    box.Visible = false; box.Thickness = 1; box.Filled = false; box.Transparency = 0.5
+    local tracer = Drawing.new("Line")
+    tracer.Visible = false; tracer.Thickness = 1
+    local nameTag = Drawing.new("Text")
+    nameTag.Visible = false; nameTag.Size = 12; nameTag.Center = true; nameTag.Outline = true
+    local healthBar = Drawing.new("Rectangle")
+    healthBar.Visible = false; healthBar.Filled = true; healthBar.Thickness = 1
+    local distText = Drawing.new("Text")
+    distText.Visible = false; distText.Size = 11; distText.Outline = true
+    PlayerESP[player] = {Box=box, Tracer=tracer, Name=nameTag, Health=healthBar, Distance=distText}
+end
+
+Players.PlayerAdded:Connect(CreatePlayerESP)
+for _, p in pairs(Players:GetPlayers()) do CreatePlayerESP(p) end
+
+local CachedGenerators = {}
+local CachedItems = {}
+
+local function CacheObjects()
+    CachedGenerators = {}
+    CachedItems = {}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local name = obj.Name:lower()
+            if name:find("generator") or name:find("gen") then
+                table.insert(CachedGenerators, obj)
+            elseif name:find("med") or name:find("health") or name:find("cola") or name:find("key") then
+                table.insert(CachedItems, obj)
+            end
+        end
+    end
+end
+CacheObjects()
+spawn(function()
+    while wait(5) do CacheObjects() end
+end)
+
+local lastESPUpdate = 0
+RunService.RenderStepped:Connect(function()
+    local now = tick()
+    if now - lastESPUpdate < 0.1 then return end
+    lastESPUpdate = now
+
+    local character = LocalPlayer.Character
+    if not character then return end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    if GetValue("ESP") then
+        local killerColor = ColorPresets[GetValue("KillersColor")] or Color3.fromRGB(255,0,0)
+        local survivorColor = ColorPresets[GetValue("SurvivorsColor")] or Color3.fromRGB(0,255,0)
+        for _, p in pairs(Players:GetPlayers()) do
+            if p == LocalPlayer then continue end
+            local targetRoot = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+            if not targetRoot then
+                local esp = PlayerESP[p]
+                if esp then
+                    esp.Box.Visible = false; esp.Tracer.Visible = false; esp.Name.Visible = false
+                    esp.Health.Visible = false; esp.Distance.Visible = false
+                end
+                continue
+            end
+            local dist = (targetRoot.Position - root.Position).Magnitude
+            if dist > 200 then
+                local esp = PlayerESP[p]
+                if esp then
+                    esp.Box.Visible = false; esp.Tracer.Visible = false; esp.Name.Visible = false
+                    esp.Health.Visible = false; esp.Distance.Visible = false
+                end
+                continue
+            end
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(targetRoot.Position)
+            local size = Vector2.new(120/dist*4, 180/dist*4)
+            local isKiller = p.Character:FindFirstChild("MaliceMeter") or p.Character:FindFirstChild("Killer")
+            local color = isKiller and killerColor or survivorColor
+
+            local esp = PlayerESP[p]
+            if esp then
+                if GetValue("Boxes") and onScreen then
+                    esp.Box.Visible = true
+                    esp.Box.Size = size
+                    esp.Box.Position = Vector2.new(pos.X - size.X/2, pos.Y - size.Y/2)
+                    esp.Box.Color = color
+                else esp.Box.Visible = false end
+
+                if GetValue("Tracers") and onScreen then
+                    esp.Tracer.Visible = true
+                    esp.Tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y)
+                    esp.Tracer.To = Vector2.new(pos.X, pos.Y)
+                    esp.Tracer.Color = color
+                else esp.Tracer.Visible = false end
+
+                if onScreen then
+                    esp.Name.Visible = true
+                    esp.Name.Text = p.Name
+                    esp.Name.Position = Vector2.new(pos.X, pos.Y - size.Y/2 - 15)
+                    esp.Name.Color = color
+                else esp.Name.Visible = false end
+
+                if GetValue("HealthBar") and onScreen and p.Character:FindFirstChildOfClass("Humanoid") then
+                    local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                    local health = hum.Health / hum.MaxHealth
+                    esp.Health.Visible = true
+                    esp.Health.Size = Vector2.new(30, 4)
+                    esp.Health.Position = Vector2.new(pos.X - 15, pos.Y + size.Y/2 + 5)
+                    esp.Health.Color = Color3.fromRGB(255*(1-health), 255*health, 0)
+                else esp.Health.Visible = false end
+
+                if GetValue("Distance") and onScreen then
+                    esp.Distance.Visible = true
+                    esp.Distance.Text = math.floor(dist) .. "m"
+                    esp.Distance.Position = Vector2.new(pos.X, pos.Y + size.Y/2 + 20)
+                    esp.Distance.Color = color
+                else esp.Distance.Visible = false end
+            end
+        end
+    else
+        for _, p in pairs(Players:GetPlayers()) do
+            local esp = PlayerESP[p]
+            if esp then
+                esp.Box.Visible = false; esp.Tracer.Visible = false; esp.Name.Visible = false
+                esp.Health.Visible = false; esp.Distance.Visible = false
+            end
+        end
+    end
+
+    if GetValue("GeneratorsESP") then
+        local genColor = ColorPresets[GetValue("GeneratorsColor")] or Color3.fromRGB(0,255,255)
+        for _, gen in pairs(CachedGenerators) do
+            if GetValue("GeneratorsCheck") and gen:FindFirstChild("Progress") and gen.Progress.Value >= 100 then
+                if ObjectESP[gen] then
+                    ObjectESP[gen].Square.Visible = false
+                    ObjectESP[gen].Text.Visible = false
+                end
+                continue
+            end
+            local dist = (gen.Position - root.Position).Magnitude
+            if dist > 150 then
+                if ObjectESP[gen] then
+                    ObjectESP[gen].Square.Visible = false
+                    ObjectESP[gen].Text.Visible = false
+                end
+                continue
+            end
+            if not ObjectESP[gen] then
+                local square = Drawing.new("Square")
+                square.Visible = false
+                square.Color = genColor
+                square.Thickness = 1
+                square.Filled = false
+                square.Transparency = 0.3
+                square.Size = Vector2.new(16, 16)
+                local text = Drawing.new("Text")
+                text.Visible = false
+                text.Color = genColor
+                text.Size = 11
+                text.Center = true
+                text.Outline = true
+                text.Text = "⚡Gen"
+                ObjectESP[gen] = {Square = square, Text = text}
+            end
+            local esp = ObjectESP[gen]
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(gen.Position)
+            if onScreen then
+                esp.Square.Visible = true
+                esp.Square.Position = Vector2.new(pos.X - 8, pos.Y - 8)
+                if GetValue("ShowText") then
+                    esp.Text.Visible = true
+                    esp.Text.Position = Vector2.new(pos.X, pos.Y - 22)
+                    esp.Text.Text = "⚡Gen " .. math.floor(dist) .. "m"
+                else
+                    esp.Text.Visible = false
+                end
+            else
+                esp.Square.Visible = false
+                esp.Text.Visible = false
+            end
+        end
+    else
+        for obj, esp in pairs(ObjectESP) do
+            if obj:IsA("BasePart") and obj.Name:lower():find("generator") then
+                esp.Square.Visible = false; esp.Text.Visible = false
+            end
+        end
+    end
+
+    if GetValue("ItemsESP") then
+        local itemColor = ColorPresets[GetValue("ItemsColor")] or Color3.fromRGB(255,215,0)
+        for _, item in pairs(CachedItems) do
+            local dist = (item.Position - root.Position).Magnitude
+            if dist > 100 then
+                if ObjectESP[item] then
+                    ObjectESP[item].Square.Visible = false
+                    ObjectESP[item].Text.Visible = false
+                end
+                continue
+            end
+            if not ObjectESP[item] then
+                local label = "📦Item"
+                local name = item.Name:lower()
+                if name:find("med") or name:find("health") then label = "❤️Med"
+                elseif name:find("cola") or name:find("bloxy") then label = "🥤Cola"
+                elseif name:find("key") then label = "🔑Key"
+                else label = "📦Item" end
+                local square = Drawing.new("Square")
+                square.Visible = false
+                square.Color = itemColor
+                square.Thickness = 1
+                square.Filled = false
+                square.Transparency = 0.3
+                square.Size = Vector2.new(16, 16)
+                local text = Drawing.new("Text")
+                text.Visible = false
+                text.Color = itemColor
+                text.Size = 11
+                text.Center = true
+                text.Outline = true
+                text.Text = label
+                ObjectESP[item] = {Square = square, Text = text}
+            end
+            local esp = ObjectESP[item]
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(item.Position)
+            if onScreen then
+                esp.Square.Visible = true
+                esp.Square.Position = Vector2.new(pos.X - 8, pos.Y - 8)
+                if GetValue("ShowText") then
+                    esp.Text.Visible = true
+                    esp.Text.Position = Vector2.new(pos.X, pos.Y - 22)
+                    esp.Text.Text = esp.Text.Text .. " " .. math.floor(dist) .. "m"
+                else
+                    esp.Text.Visible = false
+                end
+            else
+                esp.Square.Visible = false
+                esp.Text.Visible = false
+            end
+        end
+    else
+        for obj, esp in pairs(ObjectESP) do
+            if obj:IsA("BasePart") and (obj.Name:lower():find("med") or obj.Name:lower():find("cola") or obj.Name:lower():find("key")) then
+                esp.Square.Visible = false; esp.Text.Visible = false
+            end
+        end
+    end
+end)
+
+-- ============================================
+-- AIMBOT
+-- ============================================
+RunService.RenderStepped:Connect(function()
+    if GetValue("Aimbot") then
+        local character = LocalPlayer.Character
+        if not character then return end
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local target = nil
+        local minDist = math.huge
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local d = (p.Character.HumanoidRootPart.Position - root.Position).Magnitude
+                if d < minDist then minDist = d; target = p.Character.HumanoidRootPart end
+            end
+        end
+        if target then
+            local lookAt = target.Position - root.Position
+            local yaw = math.atan2(lookAt.X, lookAt.Z)
+            local pitch = math.asin(math.clamp(lookAt.Y / lookAt.Magnitude, -1, 1))
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position) * CFrame.Angles(pitch, yaw, 0)
+        end
+    end
+end)
 
 -- ============================================
 -- ЗАГРУЗКА АНИМАЦИЙ (require/getgc)
@@ -3361,9 +2075,9 @@ end)
 -- ============================================
 local function OnCharacterAdded(Character)
     task.wait(0.5)
+    SpeedMultipliers = Character:FindFirstChild("SpeedMultipliers")
     HookWalkSpeed()
     ApplySpeed()
-    -- Применяем активные функции
     if GetValue("Fly") then ToggleFly(true) end
     if GetValue("WalkOnWater") then ToggleWalkOnWater(true) end
     if GetValue("InfiniteJump") then ToggleInfiniteJump(true) end
@@ -3371,7 +2085,6 @@ local function OnCharacterAdded(Character)
     if GetValue("ForceField") then ToggleForceField(true) end
     if GetValue("AutoHeal") then ToggleAutoHeal(true) end
     if GetValue("KillAura") then ToggleKillAura(true) end
-    -- SpeedMultiplier применяется автоматически через ApplySpeed
 end
 
 LocalPlayer.CharacterAdded:Connect(OnCharacterAdded)
@@ -3385,5 +2098,5 @@ end
 task.wait(2)
 SendStartupMessage()
 
-ColoredPrint("VoidHub v5.0 loaded successfully", "success", Color3.fromRGB(0, 200, 125))
-print("VoidHub v5.0 loaded. 100+ functions ready.")
+ColoredPrint("VoidHub v5.1 loaded successfully", "success", Color3.fromRGB(0, 200, 125))
+print("VoidHub v5.1 loaded. Кнопка Void работает, Settings кликабельна.")
