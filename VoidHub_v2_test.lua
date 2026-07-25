@@ -1,4 +1,4 @@
--- VoidHub v2.2 | Archmagos Edition (с чатом)
+-- VoidHub v2.3 | Archmagos Edition (полный код)
 -- Made by void_fworld
 
 if workspace.DistributedGameTime < 4 then
@@ -19,7 +19,7 @@ end)
 
 -- General Variables --
 
-local Version = "2.2"
+local Version = "2.3"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -80,9 +80,10 @@ local AutoClickerEnabled = false
 local AutoClickerConnection = nil
 local TeleportTarget = nil
 
--- ===== ФУНКЦИЯ ОТПРАВКИ СООБЩЕНИЯ В ЧАТ ===== --
+-- ===== УЛУЧШЕННАЯ ФУНКЦИЯ ОТПРАВКИ В ЧАТ ===== --
 local function SendChatMessage(message)
     local success = false
+    -- Метод 1: через RemoteEvent (основной для Forsaken)
     pcall(function()
         if Network then
             local remote = Network:FindFirstChildOfClass("RemoteEvent")
@@ -90,10 +91,12 @@ local function SendChatMessage(message)
                 remote:FireServer("Chat", message)
                 remote:FireServer("SendMessage", message)
                 remote:FireServer("ExecuteCommand", {"Chat", message})
+                remote:FireServer("Say", message)
                 success = true
             end
         end
     end)
+    -- Метод 2: через TextChatService (запасной)
     if not success then
         pcall(function()
             if TextChatService and TextChatService.TextChannels and TextChatService.TextChannels.RBXGeneral then
@@ -102,12 +105,72 @@ local function SendChatMessage(message)
             end
         end)
     end
+    -- Метод 3: через прямой вызов (если есть глобальная функция)
+    if not success then
+        pcall(function()
+            local chat = game:GetService("Chat")
+            if chat and chat:FindFirstChild("Chat") then
+                chat.Chat:FireServer(message)
+                success = true
+            end
+        end)
+    end
     return success
+end
+
+-- ===== УЛУЧШЕННАЯ ФУНКЦИЯ DISABLE KILLER WALLS (для всех серверов) ===== --
+local function DisableKillerWalls(Value)
+    -- Ищем все стены в workspace, которые могут быть барьерами убийцы
+    local wallsFound = false
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and (obj.Name:lower():find("killer") or obj.Name:lower():find("wall") or obj.Name:lower():find("barrier") or obj.Name:lower():find("door")) then
+            -- Проверяем цвет (красный) или наличие компонента KillerOnly
+            local isKillerWall = false
+            if obj.BrickColor == BrickColor.Red() then
+                isKillerWall = true
+            end
+            if not isKillerWall and obj.Parent and obj.Parent.Name:lower():find("killer") then
+                isKillerWall = true
+            end
+            if not isKillerWall and obj:FindFirstChild("KillerOnly") then
+                isKillerWall = true
+            end
+            if isKillerWall then
+                wallsFound = true
+                if Value then
+                    obj.BrickColor = BrickColor.Green()
+                    obj.CanCollide = false
+                    obj.Transparency = 0.5
+                else
+                    obj.BrickColor = BrickColor.Red()
+                    obj.CanCollide = true
+                    obj.Transparency = 0
+                end
+            end
+        end
+    end
+    -- Если не нашли, пробуем найти по конкретным именам в GameMap
+    if not wallsFound and GameMap then
+        local KillerDoorsFolder = GameMap:FindFirstChild("KillerDoors",true) or GameMap:FindFirstChild("Killer Doors",true)
+        if KillerDoorsFolder then
+            for _, v in pairs(KillerDoorsFolder:GetChildren()) do
+                if v:IsA("BasePart") then
+                    if Value then
+                        v.BrickColor = BrickColor.Green()
+                        v.CanCollide = false
+                    else
+                        v.BrickColor = BrickColor.Red()
+                        v.CanCollide = true
+                    end
+                end
+            end
+        end
+    end
 end
 
 local FeatureLoadout; FeatureLoadout = {
     ["EnviromentFunctions"] = {
-          ["TabAttributes"] = {
+        ["TabAttributes"] = {
             ["DisplayTitle"] = "Loading...",
             ["LayoutOrder"] = 666
         },
@@ -185,7 +248,7 @@ local FeatureLoadout; FeatureLoadout = {
         },
         ["PrivateServerOwner"] = {
             ["DisplayDescription"] = " ",
-            ["DisplayTitle"] = "Private Server",
+            ["DisplayTitle"] = "Private Server Owner",
             ["LayoutOrder"] = 666,
             ["Savable"] = false,
             ["InstanceType"] = "BoolValue",
@@ -320,42 +383,15 @@ local FeatureLoadout; FeatureLoadout = {
             end
         },
         ["DisableKillerWalls"] = {
-            ["DisplayDescription"] = "Disables All Killer Walls (Red Walls)",
+            ["DisplayDescription"] = "Disables All Killer Walls (Red Walls) - works on any server",
             ["DisplayTitle"] = "Disable Killer Walls",
             ["LayoutOrder"] = 2,
-            ["Savable"] = false,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
-            ["ExtraData"] = {
-                ["Requirement"] = true
-            },
+            ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
-                local VertexColor = Value and Vector3.new(0,255,0) or Vector3.new(255,0,0)
-                local Color = Value and Color3.new(0,1,0) or Color3.new(1,0,0)
-                local KillerDoorsFolder = GameMap and (GameMap:FindFirstChild("KillerDoors",true) or GameMap:FindFirstChild("Killer Doors",true))
-                local KillerCollisions = GameMap and GameMap:FindFirstChild("KillerOnly",true)
-                if KillerDoorsFolder then
-                    for i,v in KillerDoorsFolder:GetChildren() do
-                        v.Color = Color
-                        if v:GetAttribute("OriginalCanCollide") == nil then
-                            v:SetAttribute("OriginalCanCollide", v.CanCollide)
-                        end
-                        v.CanCollide = v:GetAttribute("OriginalCanCollide") ~= false and not Value or false
-                        if KillerCollisions then
-                            local Params = OverlapParams.new()
-                            Params.FilterType = Enum.RaycastFilterType.Include
-                            Params.CollisionGroup = "Killers"
-                            Params.FilterDescendantsInstances = {KillerCollisions}
-                            local Hitbox = workspace:GetPartBoundsInRadius(v.Position, 10, Params)
-                            for i,v in Hitbox do
-                                v.CanCollide = not Value
-                            end
-                        end
-                        if v:FindFirstChildOfClass("SpecialMesh") then
-                            v:FindFirstChildOfClass("SpecialMesh").VertexColor = VertexColor
-                        end
-                    end
-                end
+                DisableKillerWalls(Value)
             end
         },
         ["DisableToxicTrails"] = {
@@ -571,7 +607,6 @@ local FeatureLoadout; FeatureLoadout = {
                 end
             end
         },
-        -- ===== НОВЫЕ ФУНКЦИИ ===== --
         ["Fly"] = {
             ["DisplayDescription"] = "Free flight (WASD + Space/Shift)",
             ["DisplayTitle"] = "Fly",
@@ -843,7 +878,6 @@ local FeatureLoadout; FeatureLoadout = {
                 GetValue("AutoPickup",true):SetAttribute("DisplayDescription",string.format("Auto-Picks up <b>%s</b> near you",RichTextGradientColor("Items",{Color,DarkerColor})))
             end
         },
-        -- ===== НОВЫЕ ВИЗУАЛЬНЫЕ ФУНКЦИИ ===== --
         ["NoFog"] = {
             ["DisplayDescription"] = "Removes all fog from the map",
             ["DisplayTitle"] = "No Fog",
@@ -1173,7 +1207,6 @@ local FeatureLoadout; FeatureLoadout = {
                 end
             end
         },
-        -- ===== НОВАЯ ФУНКЦИЯ ===== --
         ["TeleportToPlayer"] = {
             ["DisplayDescription"] = "Select a player to teleport to",
             ["DisplayTitle"] = "Teleport to Player",
@@ -1191,7 +1224,6 @@ local FeatureLoadout; FeatureLoadout = {
                 end
             end
         },
-        -- ===== НОВАЯ ФУНКЦИЯ: ОТПРАВКА СООБЩЕНИЯ В ЧАТ ===== --
         ["SendVoidHubMessage"] = {
             ["DisplayDescription"] = "Send startup message to chat",
             ["DisplayTitle"] = "Send VoidHub Message",
@@ -1213,7 +1245,7 @@ local FeatureLoadout; FeatureLoadout = {
                     else
                         StarterGui:SetCore("SendNotification", {
                             Title = "Error",
-                            Text = "Failed to send message.",
+                            Text = "Failed to send message. Try again.",
                             Duration = 3
                         })
                     end
@@ -2923,36 +2955,11 @@ InGame.ChildAdded:Connect(function(Child)
         GameMap = Child
         task.wait(0.5)
         local Value = GetValue("DisableKillerWalls")
-        local VertexColor = Value and Vector3.new(0,255,0) or Vector3.new(255,0,0)
-        local Color = Value and Color3.new(0,1,0) or Color3.new(1,0,0)
-        local KillerDoorsFolder = GameMap and (GameMap:FindFirstChild("KillerDoors",true) or GameMap:FindFirstChild("Killer Doors",true))
-        local KillerCollisions = GameMap and GameMap:FindFirstChild("KillerOnly",true)
-        if KillerDoorsFolder then
-            for i,v in KillerDoorsFolder:GetChildren() do
-                v.Color = Color
-                if v:GetAttribute("OriginalCanCollide") == nil then
-                    v:SetAttribute("OriginalCanCollide", v.CanCollide)
-                end
-                v.CanCollide = v:GetAttribute("OriginalCanCollide") ~= false and not Value or false
-                if KillerCollisions then
-                    local Params = OverlapParams.new()
-                    Params.FilterType = Enum.RaycastFilterType.Include
-                    Params.CollisionGroup = "Killers"
-                    Params.FilterDescendantsInstances = {KillerCollisions}
-                    local Hitbox = workspace:GetPartBoundsInRadius(v.Position, 10, Params)
-                    for i,v in Hitbox do
-                        v.CanCollide = not Value
-                    end
-                end
-                if v:FindFirstChildOfClass("SpecialMesh") then
-                    v:FindFirstChildOfClass("SpecialMesh").VertexColor = VertexColor
-                end
-            end
+        if Value ~= nil then
+            DisableKillerWalls(Value)
         end
     end
 end)
-
-
 
 local BlockableAttacks = {"slash","stab","attack","punch","behead","swing","tosow","sow"}
 local FireSignal = GetFunction(firesignal,FireSignal)
@@ -4282,8 +4289,9 @@ SideBar:SetAttribute("WasVisible",(MainUI:FindFirstChild("AbilityContainer") == 
 UICheck()
 SideBar.Visible = true
 
-ColoredPrint("VoidHub v2.2 | Archmagos Edition loaded successfully","success",Color3.fromRGB(0, 200, 125))
-
--- ===== АВТО-ОТПРАВКА СООБЩЕНИЯ ПРИ ЗАПУСКЕ ===== --
+-- ===== АВТО-ОТПРАВКА ПРИ ЗАПУСКЕ ===== --
 task.wait(3)
 SendChatMessage("VoidHub is running, bow down. Created by: void_fworld")
+
+ColoredPrint("VoidHub v2.3 | Archmagos Edition loaded successfully","success",Color3.fromRGB(0, 200, 125))
+print("VoidHub v2.3 loaded. Чат и стены исправлены.")
